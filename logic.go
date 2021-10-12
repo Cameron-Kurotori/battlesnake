@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/go-kit/log"
@@ -193,6 +194,7 @@ func collisionWeight(dir Direction, me Battlesnake, board Board) float64 {
 // where to move -- valid moves are BattlesnakeMove_Up, BattlesnakeMove_Down, BattlesnakeMove_Left, or BattlesnakeMove_Right.
 // We've provided some code and comments to get you started.
 func move(state GameState) BattlesnakeMoveResponse {
+	start := time.Now()
 	logger := state.Logger(logging.GlobalLogger())
 
 	possibleMoves := map[Direction]*pMove{}
@@ -263,7 +265,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		_ = level.Debug(logger).Log("msg", "Absolutely no possible moves")
 	}
 
-	_ = level.Debug(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight)
+	_ = level.Debug(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
 
 	return BattlesnakeMoveResponse{
 		Move: nextMove.dir,
