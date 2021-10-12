@@ -74,7 +74,7 @@ func numOpenSpaces(logger log.Logger, body []Coord, board Board) int {
 
 	isOccupied := func(target Coord) bool {
 		return board.OutOfBounds(target) ||
-			board.PossiblyOccupied(logger, target)
+			board.Occupied(target)
 	}
 
 	var recurse func(target Coord)

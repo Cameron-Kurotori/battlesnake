@@ -60,24 +60,24 @@ func (b Board) Occupied(c Coord) bool {
 	return false
 }
 
-func (b Board) PossiblyOccupied(logger log.Logger, c Coord) bool {
-	if CoordSliceContains(c, b.Hazards) {
-		return true
-	}
-	for _, snake := range b.Snakes {
-		// if there's a possibility of snake growing, assume it grows
-		bodyLen := snake.Length
-		for _, move := range snake.Moves(logger) {
-			if CoordSliceContains(snake.Next(move, b)[0], b.Food) {
-				bodyLen = snake.Length + 1
-			}
-		}
-		if CoordSliceContains(c, snake.Body[:bodyLen-1]) {
-			return true
-		}
-	}
-	return false
-}
+// func (b Board) PossiblyOccupied(logger log.Logger, c Coord) bool {
+// 	if CoordSliceContains(c, b.Hazards) {
+// 		return true
+// 	}
+// 	for _, snake := range b.Snakes {
+// 		// if there's a possibility of snake growing, assume it grows
+// 		bodyLen := snake.Length
+// 		for _, move := range snake.Moves(logger) {
+// 			if CoordSliceContains(snake.Next(move, b)[0], b.Food) {
+// 				bodyLen = snake.Length + 1
+// 			}
+// 		}
+// 		if CoordSliceContains(c, snake.Body[:bodyLen-1]) {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 type Battlesnake struct {
 	ID      string  `json:"id"`
