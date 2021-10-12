@@ -234,12 +234,12 @@ func move(state GameState) BattlesnakeMoveResponse {
 		}
 
 		foodAvailability := foodWeight(comparator[dir], state.You.Head, state.Board)
-		avgLenDiff := totalLenDiff / float64(len(state.Board.Snakes)-1)
+		avgLenDiff := totalLenDiff / float64(len(otherSnakes(state.You.ID, state.Board.Snakes)))
 		healthScale := foodAvailability
 		if state.You.Health > 60 && avgLenDiff < 0 {
 			healthScale = 1 - foodAvailability
 		}
-		possibleMoves[dir].weight *= math.Pow(healthScale, math.Max(1, 0.5*math.Sqrt(avgLenDiff)))
+		possibleMoves[dir].weight *= math.Pow(healthScale, 0.5*math.Sqrt(math.Max(0, avgLenDiff)))
 
 		snakeWeight := otherSnakeWeight(comparator[dir], state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
@@ -253,6 +253,9 @@ func move(state GameState) BattlesnakeMoveResponse {
 		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board), state.Board)
 		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard), 2)
 
+		if math.IsNaN(possibleMoves[dir].weight) {
+			possibleMoves[dir].weight = -100
+		}
 		_ = level.Info(dirLogger).Log(
 			"msg", "heuristics calculated",
 			"collision_weight", collisionWeight,
@@ -289,10 +292,6 @@ func move(state GameState) BattlesnakeMoveResponse {
 		_ = level.Debug(logger).Log("msg", "Absolutely no possible moves")
 	}
 
-	if math.IsNaN(nextMove.weight) {
-		nextMove.weight = -100
-		// something went wrong
-	}
 	err := level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
 	if err != nil {
 		_ = level.Error(logger).Log("msg", "erorr while logging", "err", err)
