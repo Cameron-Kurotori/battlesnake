@@ -79,16 +79,11 @@ func numOpenSpaces(logger log.Logger, body []Coord, board Board) int {
 
 	var recurse func(target Coord)
 	recurse = func(target Coord) {
-		if _, done := set[target]; done {
+		if _, done := set[target]; done || (target != body[0] && isOccupied(target)) {
 			return
 		}
-		if target != body[0] {
-			if isOccupied(target) {
-				return
-			} else {
-				set[target] = true
-			}
-		}
+		set[target] = true
+
 		recurse(Coord{target.X + 1, target.Y})
 		recurse(Coord{target.X - 1, target.Y})
 		recurse(Coord{target.X, target.Y + 1})
@@ -97,7 +92,7 @@ func numOpenSpaces(logger log.Logger, body []Coord, board Board) int {
 
 	recurse(body[0])
 
-	return len(set)
+	return len(set) - 1
 }
 
 var comparator = map[Direction]func(c1, c2 Coord) bool{
@@ -200,9 +195,9 @@ func collisionWeight(logger log.Logger, dir Direction, me Battlesnake, board Boa
 
 func edgeWeight(dir Direction, me Battlesnake, board Board) float64 {
 	nextHead := me.Next(dir, board)[0]
-	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X))
-	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y))
-	return (closestX / float64(board.Width) / 2.0) * (closestY / float64(board.Height) / 2.0)
+	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X)) + 1
+	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y)) + 1
+	return (closestX / float64(board.Width+1) / 2.0) * (closestY / float64(board.Height+1) / 2.0)
 }
 
 // This function is called on every turn of a game. Use the provided GameState to decide
