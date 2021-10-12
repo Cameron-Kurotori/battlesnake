@@ -73,7 +73,7 @@ type BattlesnakeMoveResponse struct {
 
 func HandleIndex(w http.ResponseWriter, r *http.Request) {
 	response := info()
-  log.Printf("Source IP: %s Forwarded-For: %v\n", r.RemoteAddr, r.Header["X-Forwarded-For"])
+	log.Printf("Source IP: %s Forwarded-For: %v\n", r.RemoteAddr, r.Header["X-Forwarded-For"])
 
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(response)
