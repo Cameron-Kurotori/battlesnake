@@ -115,21 +115,30 @@ var comparator = map[Direction]func(c1, c2 Coord) bool{
 	},
 }
 
+// foodWeight should return a floating point number indicative of
+// food availability
 func foodWeight(inDirection func(Coord, Coord) bool, head Coord, board Board) float64 {
-	count := 1
-	distAway := 0.0
+	count := 0
+	distAway := 0.0 // steps * food
 	for _, food := range board.Food {
 		if inDirection(food, head) {
 			count++
-			distAway += dist(head, food)
+			distAway += math.Pow(float64(head.Manhattan(food)), 2)
 		}
 	}
-	ratioFood := float64(count) / float64(len(board.Food))
-	avgDistAway := 5.0
-	if count > 1 {
-		avgDistAway = float64(distAway) / float64(count)
+
+	totalStepsAcrossBoard := Coord{0, 0}.Manhattan(Coord{board.Width, board.Height})
+
+	if count == 0 {
+		return 0
 	}
-	return float64(ratioFood) * (1 / avgDistAway)
+
+	avgDistAway := distAway / float64(count) // steps^2
+
+	componentAvgDistAway := 1 - (avgDistAway / math.Pow(float64(totalStepsAcrossBoard), 2)) // no units
+	foodRatio := (float64(count)) / float64(len(board.Food))                                // no units
+
+	return componentAvgDistAway * foodRatio
 }
 
 func otherSnakeWeight(inDirection func(Coord, Coord) bool, me Battlesnake, board Board) float64 {
@@ -209,6 +218,11 @@ func move(state GameState) BattlesnakeMoveResponse {
 	for _, snake := range state.Board.Snakes {
 		openSpacesOnBoard -= int(snake.Length)
 	}
+
+	totalLenDiff := 0.0
+	for _, snake := range otherSnakes(state.You.ID, state.Board.Snakes) {
+		totalLenDiff += float64(snake.Length - state.You.Length)
+	}
 	for _, dir := range state.You.Moves() {
 		dirLogger := log.With(logger, "dir", dir)
 		nextBody := state.You.Next(dir, state.Board)
@@ -223,10 +237,14 @@ func move(state GameState) BattlesnakeMoveResponse {
 			dir:    directionToMove[dir],
 			weight: 1.0,
 		}
-		fWeight := foodWeight(comparator[dir], state.You.Head, state.Board)
 
-		healthExponent := -3*math.Log(float64(state.You.Health-9)) + 10
-		possibleMoves[dir].weight *= math.Pow(fWeight, healthExponent)
+		foodAvailability := foodWeight(comparator[dir], state.You.Head, state.Board)
+		avgLenDiff := totalLenDiff / float64(len(state.Board.Snakes)-1)
+		healthScale := foodAvailability
+		if state.You.Health > 60 && avgLenDiff < 0 {
+			healthScale = 1 - foodAvailability
+		}
+		possibleMoves[dir].weight *= math.Pow(healthScale, math.Max(1, 0.5*math.Sqrt(avgLenDiff)))
 
 		snakeWeight := otherSnakeWeight(comparator[dir], state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
@@ -235,7 +253,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		possibleMoves[dir].weight *= math.Pow(collisionWeight, 2)
 
 		edgeWeight := edgeWeight(dir, state.You, state.Board)
-		possibleMoves[dir].weight *= edgeWeight
+		possibleMoves[dir].weight *= math.Pow(edgeWeight, math.Sqrt(float64(state.Turn))/6.0)
 
 		openSpaces := numOpenSpaces(state.You.Next(dir, state.Board), state.Board)
 		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard), 2)
@@ -245,8 +263,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 			"collision_weight", collisionWeight,
 			"edge_weight", edgeWeight,
 			"final_weight", possibleMoves[dir].weight,
-			"food_weight", fWeight,
-			"health_exponent", healthExponent,
+			"food_availability", foodAvailability,
 			"health", state.You.Health,
 			"open_spaces", openSpaces,
 			"snake_weight", snakeWeight,
