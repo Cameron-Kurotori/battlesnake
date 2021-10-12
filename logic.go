@@ -120,7 +120,8 @@ func move(state GameState) BattlesnakeMoveResponse {
 	logger := state.Logger(logging.GlobalLogger())
 	survivability := map[Direction]float64{}
 	for _, move := range state.You.Moves() {
-		if state.Board.OutOfBounds(state.You.Head.Add(Coord(move))) {
+		nextHead := state.You.Next(move, state.Board)[0]
+		if state.Board.OutOfBounds(nextHead) || state.Board.Occupied(nextHead) {
 			continue
 		}
 
