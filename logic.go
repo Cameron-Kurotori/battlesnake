@@ -49,7 +49,7 @@ func food(state GameState, dir Direction) float64 {
 	score := 0.0
 	for _, food := range state.Board.Food {
 		if inDirectionOf[dir](state.You.Head, food) {
-			score += float64(state.Board.Height * state.Board.Width * state.You.Head.Manhattan(food))
+			score += float64(state.You.Head.Manhattan(food))
 		}
 	}
 
@@ -103,13 +103,13 @@ func trapped(state GameState, dir Direction) float64 {
 
 const (
 	foodCoefficient = 1.0
-	foodExponent    = 1.0
+	foodExponent    = 1
 
-	enemyCoefficient = 4.0
-	enemyExponent    = 2.0
+	enemyCoefficient = 5.0
+	enemyExponent    = 1.0
 
 	trappedCoefficient = 5.0
-	trappedExponent    = 3.0
+	trappedExponent    = 1.0
 )
 
 // This function is called on every turn of a game. Use the provided GameState to decide
