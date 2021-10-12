@@ -105,11 +105,11 @@ const (
 	foodCoefficient = 1.0
 	foodExponent    = 1.0
 
-	enemyCoefficient = 1.0
-	enemyExponent    = 1.0
+	enemyCoefficient = 4.0
+	enemyExponent    = 2.0
 
-	trappedCoefficient = 1.0
-	trappedExponent    = 1.0
+	trappedCoefficient = 5.0
+	trappedExponent    = 3.0
 )
 
 // This function is called on every turn of a game. Use the provided GameState to decide
@@ -122,10 +122,10 @@ func move(state GameState) BattlesnakeMoveResponse {
 	for _, move := range state.You.Moves() {
 		score := 0.0
 
-		logKV := []interface{}{"msg", "heuristics calculated"}
+		logKV := []interface{}{"msg", "heuristics calculated", "direction", move}
 
 		foodScore := food(state, move)
-		score += (foodCoefficient * math.Pow(float64(foodScore), foodExponent)) / float64(state.Board.Height*state.Board.Width)
+		score += (foodCoefficient * math.Pow(float64(foodScore), foodExponent)) / float64(state.Board.Height*state.Board.Width*len(state.Board.Food))
 		logKV = append(logKV, "food_score", foodScore)
 
 		enemyScore := enemies(state, move)
