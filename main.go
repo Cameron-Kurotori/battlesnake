@@ -81,6 +81,6 @@ func main() {
 	http.HandleFunc("/move", HandleMove)
 	http.HandleFunc("/end", HandleEnd)
 
-	_ = level.Debug(logging.GlobalLogger()).Log("msg", fmt.Sprintf("Starting Battlesnake Server at http://0.0.0.0:%s...\n", port))
+	_ = level.Info(logging.GlobalLogger()).Log("msg", fmt.Sprintf("Starting Battlesnake Server at http://0.0.0.0:%s...\n", port))
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

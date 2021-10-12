@@ -168,9 +168,8 @@ func otherSnakes(myID string, snakes []Battlesnake) []Battlesnake {
 }
 
 type pMove struct {
-	dir         BattlesnakeMove
-	weight      float64
-	permanentNo bool
+	dir    BattlesnakeMove
+	weight float64
 }
 
 func collisionWeight(dir Direction, me Battlesnake, board Board) float64 {
@@ -204,16 +203,18 @@ func move(state GameState) BattlesnakeMoveResponse {
 		openSpacesOnBoard -= int(snake.Length)
 	}
 	for _, dir := range state.You.Moves() {
-		possibleMoves[dir] = &pMove{
-			dir:         directionToMove[dir],
-			weight:      1.0,
-			permanentNo: false,
-		}
 		dirLogger := log.With(logger, "dir", dir)
-		if state.Board.Occupied(state.You.Next(dir, state.Board)[0]) {
+		nextBody := state.You.Next(dir, state.Board)
+		if state.Board.OutOfBounds(nextBody[0]) {
+			_ = level.Debug(dirLogger).Log("msg", "out of bounds")
+			continue
+		} else if state.Board.Occupied(nextBody[0]) {
 			_ = level.Debug(dirLogger).Log("msg", "occupied")
-			possibleMoves[dir].weight = 0
-			possibleMoves[dir].permanentNo = true
+			continue
+		}
+		possibleMoves[dir] = &pMove{
+			dir:    directionToMove[dir],
+			weight: 1.0,
 		}
 		fWeight := foodWeight(comparator[dir], state.You.Head, state.Board)
 
@@ -229,7 +230,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		openSpaces := numOpenSpaces(state.You.Next(dir, state.Board), state.Board)
 		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard), 2)
 
-		_ = level.Debug(dirLogger).Log(
+		_ = level.Info(dirLogger).Log(
 			"msg", "heuristics calculated",
 			"open_spaces", openSpaces,
 			"total_open_spaces", openSpacesOnBoard,
@@ -247,9 +248,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 
 	possibleMovesList := []*pMove{}
 	for _, m := range possibleMoves {
-		if !m.permanentNo {
-			possibleMovesList = append(possibleMovesList, m)
-		}
+		possibleMovesList = append(possibleMovesList, m)
 	}
 	sort.Slice(possibleMovesList, func(i, j int) bool {
 		return possibleMovesList[i].weight > possibleMovesList[j].weight
@@ -265,7 +264,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		_ = level.Debug(logger).Log("msg", "Absolutely no possible moves")
 	}
 
-	_ = level.Debug(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
+	_ = level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
 
 	return BattlesnakeMoveResponse{
 		Move: nextMove.dir,
