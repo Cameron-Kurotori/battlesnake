@@ -120,6 +120,10 @@ func move(state GameState) BattlesnakeMoveResponse {
 	logger := state.Logger(logging.GlobalLogger())
 	survivability := map[Direction]float64{}
 	for _, move := range state.You.Moves() {
+		if state.Board.OutOfBounds(state.You.Head.Add(Coord(move))) {
+			continue
+		}
+
 		score := 0.0
 
 		logKV := []interface{}{"msg", "heuristics calculated", "direction", move}
