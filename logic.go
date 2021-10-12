@@ -225,8 +225,8 @@ func move(state GameState) BattlesnakeMoveResponse {
 		}
 		fWeight := foodWeight(comparator[dir], state.You.Head, state.Board)
 
-		healthScale := -math.Log2(float64(state.You.Health)) + 5.5
-		possibleMoves[dir].weight *= math.Pow(fWeight, math.Max(healthScale, 0))
+		healthExponent := -3*math.Log(float64(state.You.Health-9)) + 10
+		possibleMoves[dir].weight *= math.Pow(fWeight, healthExponent)
 
 		snakeWeight := otherSnakeWeight(comparator[dir], state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
@@ -246,7 +246,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 			"edge_weight", edgeWeight,
 			"final_weight", possibleMoves[dir].weight,
 			"food_weight", fWeight,
-			"health_scale", healthScale,
+			"health_exponent", healthExponent,
 			"health", state.You.Health,
 			"open_spaces", openSpaces,
 			"snake_weight", snakeWeight,
