@@ -129,7 +129,7 @@ func foodWeight(inDirection func(Coord, Coord) bool, head Coord, board Board) fl
 
 	totalStepsAcrossBoard := Coord{0, 0}.Manhattan(Coord{board.Width, board.Height})
 
-	if count == 0 {
+	if count == 0 || len(board.Food) == 0 {
 		return 0
 	}
 
@@ -296,6 +296,10 @@ func move(state GameState) BattlesnakeMoveResponse {
 		_ = level.Debug(logger).Log("msg", "Absolutely no possible moves")
 	}
 
+	if math.IsNaN(nextMove.weight) {
+		nextMove.weight = -1
+		// something went wrong
+	}
 	err := level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
 	if err != nil {
 		_ = level.Error(logger).Log("msg", "erorr while logging", "err", err)
