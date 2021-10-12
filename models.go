@@ -97,18 +97,18 @@ func (snake Battlesnake) Moves() []Direction {
 }
 
 func (snake Battlesnake) Direction() Direction {
-	head, neck := snake.Head, snake.Head
-	if snake.Length > 1 {
-		neck = snake.Body[1]
+	if snake.Length < 2 {
+		return Direction_Right
 	}
+	head, neck := snake.Head, snake.Body[1]
 	return Direction(head.Add(neck.Reverse()))
 }
 
 type Direction Coord
 
 var (
-	Direction_Up    = Direction{0, -1}
-	Direction_Down  = Direction{0, 1}
+	Direction_Up    = Direction{0, 1}
+	Direction_Down  = Direction{0, -1}
 	Direction_Left  = Direction{-1, 0}
 	Direction_Right = Direction{1, 0}
 )

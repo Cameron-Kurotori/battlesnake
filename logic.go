@@ -125,7 +125,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		logKV := []interface{}{"msg", "heuristics calculated"}
 
 		foodScore := food(state, move)
-		score += foodCoefficient * math.Pow(float64(foodScore), foodExponent)
+		score += (foodCoefficient * math.Pow(float64(foodScore), foodExponent)) / float64(state.Board.Height*state.Board.Width)
 		logKV = append(logKV, "food_score", foodScore)
 
 		enemyScore := enemies(state, move)
@@ -137,6 +137,8 @@ func move(state GameState) BattlesnakeMoveResponse {
 		logKV = append(logKV, "trapped_score", trappedScore)
 
 		_ = level.Debug(logger).Log(logKV...)
+
+		survivability[move] = score
 	}
 
 	movesList := []Direction{}
@@ -146,14 +148,13 @@ func move(state GameState) BattlesnakeMoveResponse {
 
 	direction := state.You.Direction()
 	if len(movesList) > 0 {
+		sort.Slice(movesList, func(i, j int) bool {
+			return survivability[movesList[i]] > survivability[movesList[j]]
+		})
 		direction = movesList[0]
 	} else {
 		_ = level.Warn(logger).Log("msg", "no available moves, continuing in direction", "direction", direction)
 	}
-
-	sort.Slice(movesList, func(i, j int) bool {
-		return survivability[movesList[i]] < survivability[movesList[j]]
-	})
 
 	move := directionToMove[direction]
 	_ = level.Debug(logger).Log(
