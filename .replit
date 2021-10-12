@@ -1,2 +1,2 @@
 language = "go"
-run = "go build && ./battlesnake"
+run = "go build && ./battlesnake 2>&1 | tee run.log"
