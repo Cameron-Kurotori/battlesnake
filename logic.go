@@ -296,7 +296,10 @@ func move(state GameState) BattlesnakeMoveResponse {
 		_ = level.Debug(logger).Log("msg", "Absolutely no possible moves")
 	}
 
-	_ = level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
+	err := level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
+	if err != nil {
+		_ = level.Error(logger).Log("msg", "erorr while logging", "err", err)
+	}
 
 	return BattlesnakeMoveResponse{
 		Move: nextMove.dir,
