@@ -49,11 +49,11 @@ func food(state GameState, dir Direction) float64 {
 	score := 0.0
 	for _, food := range state.Board.Food {
 		if inDirectionOf[dir](state.You.Head, food) {
-			score += float64(state.You.Head.Manhattan(food))
+			score += math.Pow(float64(state.You.Head.Manhattan(food)), 2)
 		}
 	}
 
-	return score
+	return math.Sqrt(score)
 }
 
 func enemies(state GameState, dir Direction) float64 {
@@ -130,15 +130,22 @@ func move(state GameState) BattlesnakeMoveResponse {
 		logKV := []interface{}{"msg", "heuristics calculated", "direction", move}
 
 		foodScore := food(state, move)
-		score += (foodCoefficient * math.Pow(float64(foodScore), foodExponent)) / float64(state.Board.Height*state.Board.Width*len(state.Board.Food))
+		score += (math.Max(
+			1.0,
+			-2*math.Log2(float64(state.You.Health)/10)+4.5,
+		) *
+			foodCoefficient *
+			math.Pow(foodScore, foodExponent)) /
+			float64(len(state.Board.Food))
+
 		logKV = append(logKV, "food_score", foodScore)
 
 		enemyScore := enemies(state, move)
-		score += enemyCoefficient * math.Pow(float64(enemyScore), enemyExponent)
+		score += enemyCoefficient * math.Pow(enemyScore, enemyExponent)
 		logKV = append(logKV, "enemy_score", enemyScore)
 
 		trappedScore := trapped(state, move)
-		score += trappedCoefficient * math.Pow(float64(trappedScore), trappedExponent)
+		score += trappedCoefficient * math.Pow(trappedScore, trappedExponent)
 		logKV = append(logKV, "trapped_score", trappedScore)
 
 		_ = level.Info(logger).Log(logKV...)
