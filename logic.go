@@ -256,6 +256,10 @@ func move(state GameState) BattlesnakeMoveResponse {
 	}
 
 	nextMove := possibleMoves[state.You.Direction()]
+	if nextMove == nil {
+		// really horrible case :(
+		nextMove = &pMove{dir: BattlesnakeMove_Right}
+	}
 
 	possibleMovesList := []*pMove{}
 	for _, m := range possibleMoves {
