@@ -157,12 +157,16 @@ func move(state GameState) BattlesnakeMoveResponse {
 	}
 
 	move := directionToMove[direction]
-	_ = level.Debug(logger).Log(
+	kv := []interface{}{
 		"msg", "making move",
 		"move", move,
-		"survivability", survivability,
 		"took_ms", time.Since(start).Milliseconds(),
-	)
+	}
+
+	for dir, score := range survivability {
+		kv = append(kv, directionToMove[dir]+"_score", score)
+	}
+	_ = level.Debug(logger).Log(kv...)
 
 	return BattlesnakeMoveResponse{
 		Move: move,
