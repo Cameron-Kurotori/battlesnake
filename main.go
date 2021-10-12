@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/BattlesnakeOfficial/starter-snake-go/logging"
+	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/go-kit/log/level"
 )
 

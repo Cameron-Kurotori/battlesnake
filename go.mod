@@ -1,4 +1,4 @@
-module github.com/BattlesnakeOfficial/starter-snake-go
+module github.com/Cameron-Kurotori/battlesnake
 
 go 1.13
 
