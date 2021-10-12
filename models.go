@@ -3,7 +3,6 @@ package main
 import (
 	"math"
 
-	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
@@ -61,14 +60,14 @@ func (b Board) Occupied(c Coord) bool {
 	return false
 }
 
-func (b Board) PossiblyOccupied(c Coord) bool {
+func (b Board) PossiblyOccupied(logger log.Logger, c Coord) bool {
 	if CoordSliceContains(c, b.Hazards) {
 		return true
 	}
 	for _, snake := range b.Snakes {
 		// if there's a possibility of snake growing, assume it grows
 		bodyLen := snake.Length
-		for _, move := range snake.Moves() {
+		for _, move := range snake.Moves(logger) {
 			if CoordSliceContains(snake.Next(move, b)[0], b.Food) {
 				bodyLen = snake.Length + 1
 			}
@@ -106,7 +105,7 @@ func (snake Battlesnake) Next(dir Direction, board Board) []Coord {
 	return nextBody
 }
 
-func (snake Battlesnake) Moves() []Direction {
+func (snake Battlesnake) Moves(logger log.Logger) []Direction {
 	moves := []Direction{}
 	snakeDirection := snake.Direction()
 	for _, dir := range moveToDirection {
@@ -114,7 +113,7 @@ func (snake Battlesnake) Moves() []Direction {
 			moves = append(moves, dir)
 		}
 	}
-	_ = level.Debug(logging.GlobalLogger()).Log("msg", "calculating possible moves", "moves", moves, "snake_direction", snakeDirection, "snake_id", snake.ID)
+	_ = level.Debug(logger).Log("msg", "calculating possible moves", "moves", moves, "snake_direction", snakeDirection)
 	return moves
 }
 

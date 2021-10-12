@@ -69,12 +69,12 @@ func dist(c1, c2 Coord) float64 {
 	return math.Abs(float64(c1.X-c2.X)) + math.Abs(float64(c1.Y-c2.Y))
 }
 
-func numOpenSpaces(body []Coord, board Board) int {
+func numOpenSpaces(logger log.Logger, body []Coord, board Board) int {
 	set := map[Coord]bool{}
 
 	isOccupied := func(target Coord) bool {
 		return board.OutOfBounds(target) ||
-			board.PossiblyOccupied(target)
+			board.PossiblyOccupied(logger, target)
 	}
 
 	var recurse func(target Coord)
@@ -181,11 +181,11 @@ type pMove struct {
 	weight float64
 }
 
-func collisionWeight(dir Direction, me Battlesnake, board Board) float64 {
+func collisionWeight(logger log.Logger, dir Direction, me Battlesnake, board Board) float64 {
 	weight := 1.0
 	myNextBody := me.Next(dir, board)
 	for _, snake := range otherSnakes(me.ID, board.Snakes) {
-		for _, otherDir := range snake.Moves() {
+		for _, otherDir := range snake.Moves(logger) {
 			nextSnake := snake.Next(otherDir, board)
 			if headOnCollision(myNextBody, nextSnake) && me.Length < snake.Length {
 				weight *= 1.0 / 3
@@ -223,7 +223,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 	for _, snake := range otherSnakes(state.You.ID, state.Board.Snakes) {
 		totalLenDiff += float64(snake.Length - state.You.Length)
 	}
-	for _, dir := range state.You.Moves() {
+	for _, dir := range state.You.Moves(logger) {
 		dirLogger := log.With(logger, "dir", dir)
 		nextBody := state.You.Next(dir, state.Board)
 		if state.Board.OutOfBounds(nextBody[0]) {
@@ -249,13 +249,13 @@ func move(state GameState) BattlesnakeMoveResponse {
 		snakeWeight := otherSnakeWeight(comparator[dir], state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
 
-		collisionWeight := collisionWeight(dir, state.You, state.Board)
+		collisionWeight := collisionWeight(dirLogger, dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(collisionWeight, 2)
 
 		edgeWeight := edgeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(edgeWeight, math.Sqrt(float64(state.Turn))/6.0)
 
-		openSpaces := numOpenSpaces(state.You.Next(dir, state.Board), state.Board)
+		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board), state.Board)
 		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard), 2)
 
 		_ = level.Info(dirLogger).Log(
@@ -272,12 +272,6 @@ func move(state GameState) BattlesnakeMoveResponse {
 
 	}
 
-	nextMove := possibleMoves[state.You.Direction()]
-	if nextMove == nil {
-		// really horrible case :(
-		nextMove = &pMove{dir: BattlesnakeMove_Right}
-	}
-
 	possibleMovesList := []*pMove{}
 	for _, m := range possibleMoves {
 		possibleMovesList = append(possibleMovesList, m)
@@ -286,6 +280,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		return possibleMovesList[i].weight > possibleMovesList[j].weight
 	})
 
+	var nextMove *pMove
 	if len(possibleMovesList) > 0 {
 		nextMove = possibleMovesList[0]
 		if possibleMovesList[0].weight == 0.0 {
@@ -293,11 +288,14 @@ func move(state GameState) BattlesnakeMoveResponse {
 			nextMove = possibleMovesList[rand.Intn(len(possibleMovesList))]
 		}
 	} else {
+		nextMove = &pMove{
+			dir: BattlesnakeMove_Right,
+		}
 		_ = level.Debug(logger).Log("msg", "Absolutely no possible moves")
 	}
 
 	if math.IsNaN(nextMove.weight) {
-		nextMove.weight = -1
+		nextMove.weight = -100
 		// something went wrong
 	}
 	err := level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
