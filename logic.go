@@ -136,7 +136,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		score += trappedCoefficient * math.Pow(float64(trappedScore), trappedExponent)
 		logKV = append(logKV, "trapped_score", trappedScore)
 
-		_ = level.Debug(logger).Log(logKV...)
+		_ = level.Info(logger).Log(logKV...)
 
 		survivability[move] = score
 	}
@@ -166,7 +166,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 	for dir, score := range survivability {
 		kv = append(kv, directionToMove[dir]+"_score", score)
 	}
-	_ = level.Debug(logger).Log(kv...)
+	_ = level.Info(logger).Log(kv...)
 
 	return BattlesnakeMoveResponse{
 		Move: move,

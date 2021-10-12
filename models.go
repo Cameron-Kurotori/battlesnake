@@ -3,7 +3,9 @@ package main
 import (
 	"math"
 
+	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 )
 
 type GameState struct {
@@ -89,10 +91,11 @@ func (snake Battlesnake) Moves() []Direction {
 	moves := []Direction{}
 	snakeDirection := snake.Direction()
 	for _, dir := range moveToDirection {
-		if dir != snakeDirection {
+		if Coord(dir) != Coord(snakeDirection).Reverse() {
 			moves = append(moves, dir)
 		}
 	}
+	_ = level.Debug(logging.GlobalLogger()).Log("msg", "calculating possible moves", "moves", moves, "snake_direction", snakeDirection, "snake_id", snake.ID)
 	return moves
 }
 
