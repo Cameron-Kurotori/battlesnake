@@ -24,7 +24,7 @@ func TestNeckAvoidance(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		nextMove := move(state)
 		// Assert never move left
-		if nextMove.Move == "left" {
+		if nextMove.Move == BattlesnakeMove_Left {
 			t.Errorf("snake moved onto its own neck, %s", nextMove.Move)
 		}
 	}

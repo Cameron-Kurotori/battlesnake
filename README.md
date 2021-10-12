@@ -41,7 +41,7 @@ Whenever you update these values, go to the page for your Battlesnake and select
 
 On every turn of each game your Battlesnake receives information about the game board and must decide its next move.
 
-Locate the `move` function inside [logic.go](logic.go#L45). Possible moves are "up", "down", "left", or "right". To start your Battlesnake will choose a move randomly. Your goal as a developer is to read information sent to you about the board (available in the `GameState` struct found in [main.go](main.go#L10)) and decide where your Battlesnake should move next. Your Battlesnakes move logic lives in [logic.go](logic.go#L45). This is the code you will want to edit.
+Locate the `move` function inside [logic.go](logic.go#L45). Possible moves are "up", BattlesnakeMove_Down, BattlesnakeMove_Left, or BattlesnakeMove_Right. To start your Battlesnake will choose a move randomly. Your goal as a developer is to read information sent to you about the board (available in the `GameState` struct found in [main.go](main.go#L10)) and decide where your Battlesnake should move next. Your Battlesnakes move logic lives in [logic.go](logic.go#L45). This is the code you will want to edit.
 
 See the [Battlesnake Game Rules](https://docs.battlesnake.com/references/rules) for more information on playing the game, moving around the board, and improving your algorithm.
 
