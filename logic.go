@@ -8,8 +8,11 @@ package main
 import (
 	"log"
 	"math"
-	"math/rand"
 	"sort"
+	"time"
+
+	"github.com/BattlesnakeOfficial/starter-snake-go/logging"
+	"github.com/go-kit/log/level"
 )
 
 // This function is called when you register your Battlesnake on play.battlesnake.com
@@ -18,7 +21,7 @@ import (
 // For customization options, see https://docs.battlesnake.com/references/personalization
 // TIP: If you open your Battlesnake URL in browser you should see this data.
 func info() BattlesnakeInfoResponse {
-	log.Println("INFO")
+	_ = level.Debug(logging.GlobalLogger()).Log("msg", "INFO")
 	return BattlesnakeInfoResponse{
 		APIVersion: "1",
 		Author:     "cameron-kurotori", // TODO: Your Battlesnake username
@@ -32,6 +35,7 @@ func info() BattlesnakeInfoResponse {
 // The provided GameState contains information about the game that's about to be played.
 // It's purely for informational purposes, you don't have to make any decisions here.
 func start(state GameState) {
+	_ = level.Debug(logging.GlobalLogger()).Log("msg", "START", "game_id", state.Game.ID, "snake_id", state.You.ID)
 	log.Printf("%s START\n", state.Game.ID)
 }
 
@@ -41,268 +45,125 @@ func end(state GameState) {
 	log.Printf("%s END\n\n", state.Game.ID)
 }
 
-func contains(coord Coord, set []Coord) bool {
-	for _, c := range set {
-		if coord.X == c.X && coord.Y == c.Y {
-			return true
+func food(state GameState, dir Direction) float64 {
+	score := 0.0
+	for _, food := range state.Board.Food {
+		if inDirectionOf[dir](state.You.Head, food) {
+			score += float64(state.Board.Height * state.Board.Width * state.You.Head.Manhattan(food))
 		}
 	}
-	return false
+
+	return score
 }
 
-func nextBody(move Coord, body []Coord, board Board) []Coord {
-	next := make([]Coord, len(body))
-	next[0] = Coord{
-		X: body[0].X + move.X,
-		Y: body[0].Y + move.Y,
+func enemies(state GameState, dir Direction) float64 {
+	score := 0.0
+	for _, snake := range state.Board.Snakes {
+		if snake.ID == state.You.ID {
+			continue
+		}
+		if inDirectionOf[dir](state.You.Head, snake.Head) {
+			score -= float64(state.Board.Height * state.Board.Width * state.You.Head.Manhattan(snake.Head))
+		}
 	}
-	for i, coord := range body[0 : len(body)-1] {
-		next[i+1] = coord
-	}
-	if contains(next[0], board.Food) {
-		next = append(next, body[len(body)-1])
-	}
-	return next
+
+	return score
 }
 
-func headOnCollision(me, other []Coord) bool {
-	return me[0] == other[0]
-}
-
-func bodyCollision(me, other []Coord) bool {
-	return contains(me[0], other)
-}
-
-func dist(c1, c2 Coord) float64 {
-	return math.Sqrt(math.Pow(float64(c1.X-c2.X), 2) + math.Pow(float64(c1.Y-c2.Y), 2))
-}
-
-func numOpenSpaces(body []Coord, board Board) int {
+func trapped(state GameState, dir Direction) float64 {
 	set := map[Coord]bool{}
+	nextSnake := state.You.Next(dir, state.Board)
 
-	isOccupied := func(target Coord) bool {
-		return target.Y >= board.Height ||
-			target.Y < 0 ||
-			target.X >= board.Width ||
-			target.X < 0 ||
-			contains(target, board.Hazards) ||
-			func() bool {
-				for _, snake := range board.Snakes {
-					if contains(target, snake.Body) {
-						return true
-					}
-				}
-				return false
-			}()
-	}
-
-	var recurse func(target Coord)
+	var recurse func(Coord)
 	recurse = func(target Coord) {
 		if _, done := set[target]; done {
 			return
 		}
-		if target != body[0] {
-			if isOccupied(target) {
-				return
-			} else {
-				set[target] = true
-			}
+
+		if state.Board.Occupied(target) || state.Board.OutOfBounds(target) {
+			return
 		}
-		recurse(Coord{target.X + 1, target.Y})
-		recurse(Coord{target.X - 1, target.Y})
-		recurse(Coord{target.X, target.Y + 1})
-		recurse(Coord{target.X, target.Y - 1})
-	}
 
-	recurse(body[0])
+		set[target] = true
 
-	return len(set)
-}
-
-func occupied(move Coord, me Battlesnake, board Board) bool {
-	nextBody := nextBody(move, me.Body, board)
-	nextHead := nextBody[0]
-
-	boardWidth := board.Width
-	boardHeight := board.Height
-
-	return nextHead.Y >= boardHeight ||
-		nextHead.Y < 0 ||
-		nextHead.X >= boardWidth ||
-		nextHead.X < 0 ||
-		contains(nextHead, nextBody[1:]) ||
-		func() bool {
-			for _, snake := range otherSnakes(me.ID, board.Snakes) {
-				if contains(nextHead, snake.Body) {
-					return true
-				}
-			}
-			return false
-		}()
-}
-
-var comparator = map[string]func(c1, c2 Coord) bool{
-	"up": func(c1, c2 Coord) bool {
-		return c1.Y > c2.Y
-	},
-	"down": func(c1, c2 Coord) bool {
-		return c1.Y < c2.Y
-	},
-	"left": func(c1, c2 Coord) bool {
-		return c1.X < c2.X
-	},
-	"right": func(c1, c2 Coord) bool {
-		return c1.X > c2.X
-	},
-}
-
-func foodWeight(inDirection func(Coord, Coord) bool, head Coord, board Board) float64 {
-	count := 1
-	distAway := 0.0
-	for _, food := range board.Food {
-		if inDirection(food, head) {
-			count++
-			distAway += dist(head, food)
+		for next := range directionToMove {
+			recurse(target.Add(Coord(next)))
 		}
 	}
-	ratioFood := float64(count) / float64(len(board.Food))
-	avgDistAway := 5.0
-	if count > 1 {
-		avgDistAway = float64(distAway) / float64(count)
-	}
-	return float64(ratioFood) * (1 / avgDistAway)
-}
 
-func direction(body []Coord) Coord {
-	return Coord{body[1].X - body[0].X, body[1].Y - body[0].Y}
-}
-
-func otherSnakeWeight(inDirection func(Coord, Coord) bool, me Battlesnake, board Board) float64 {
-	head := me.Head
-	count := 0
-	distAway := 0.0
-	for _, snake := range otherSnakes(me.ID, board.Snakes) {
-		if inDirection(snake.Head, head) {
-			if snake.Length >= me.Length {
-				count++
-				distAway += dist(head, snake.Head)
-			} else {
-				log.Printf("snake %s is shorter and in this direction... KILL THEM! their_length=%d my_length=%d", snake.ID, snake.Length, me.Length)
-			}
-		}
-	}
-	if count == 0 {
-		return 1
-	}
-	avgDistAway := distAway / float64(count)
-
-	return (avgDistAway / dist(Coord{0, 0}, Coord{board.Height, board.Width})) / float64(count)
-}
-
-func otherSnakes(myID string, snakes []Battlesnake) []Battlesnake {
-	otherSnakes := make([]Battlesnake, len(snakes)-1)
-	i := 0
-	for _, snake := range snakes {
-		if snake.ID == myID {
+	for next := range directionToMove {
+		if Coord(next) == Coord(dir).Reverse() {
 			continue
 		}
-		otherSnakes[i] = snake
-		i++
+		recurse(nextSnake[0].Add(Coord(next)))
 	}
-	return otherSnakes
+
+	return float64(len(set))
 }
 
-type pMove struct {
-	dir         string
-	weight      float64
-	permanentNo bool
-}
+const (
+	foodCoefficient = 1.0
+	foodExponent    = 1.0
 
-func collisionWeight(dir Coord, me Battlesnake, board Board) float64 {
-	weight := 1.0
-	myNextBody := nextBody(dir, me.Body, board)
-	for _, snake := range otherSnakes(me.ID, board.Snakes) {
-		for _, otherDir := range []Coord{{0, 1}, {0, -1}, {1, 0}, {-1, 0}} {
-			nextSnake := nextBody(otherDir, snake.Body, board)
-			if headOnCollision(myNextBody, nextSnake) && me.Length < snake.Length {
-				weight *= 1.0 / 3
-			}
-			if bodyCollision(myNextBody, nextSnake) {
-				return 0
-			}
-		}
-	}
-	return weight
-}
+	enemyCoefficient = 1.0
+	enemyExponent    = 1.0
+
+	trappedCoefficient = 1.0
+	trappedExponent    = 1.0
+)
 
 // This function is called on every turn of a game. Use the provided GameState to decide
 // where to move -- valid moves are "up", "down", "left", or "right".
 // We've provided some code and comments to get you started.
 func move(state GameState) BattlesnakeMoveResponse {
-	possibleMoves := map[string]*pMove{
-		"up":    {"up", 1, false},
-		"down":  {"down", 1, false},
-		"left":  {"left", 1, false},
-		"right": {"right", 1, false},
+	start := time.Now()
+	logger := state.Logger(logging.GlobalLogger())
+	survivability := map[Direction]float64{}
+	for _, move := range state.You.Moves() {
+		score := 0.0
+
+		logKV := []interface{}{"msg", "heuristics calculated"}
+
+		foodScore := food(state, move)
+		score += foodCoefficient * math.Pow(float64(foodScore), foodExponent)
+		logKV = append(logKV, "food_score", foodScore)
+
+		enemyScore := enemies(state, move)
+		score += enemyCoefficient * math.Pow(float64(enemyScore), enemyExponent)
+		logKV = append(logKV, "enemy_score", enemyScore)
+
+		trappedScore := trapped(state, move)
+		score += trappedCoefficient * math.Pow(float64(trappedScore), trappedExponent)
+		logKV = append(logKV, "trapped_score", trappedScore)
+
+		_ = level.Debug(logger).Log(logKV...)
 	}
 
-	moves := map[string]Coord{
-		"right": {1, 0},
-		"left":  {-1, 0},
-		"up":    {0, 1},
-		"down":  {0, -1},
+	movesList := []Direction{}
+	for d := range survivability {
+		movesList = append(movesList, d)
 	}
 
-	for dir, move := range moves {
-		if occupied(move, state.You, state.Board) {
-			log.Printf("dir=%s occupied", dir)
-			possibleMoves[dir].weight = 0
-			possibleMoves[dir].permanentNo = true
-		}
-		fWeight := foodWeight(comparator[dir], state.You.Head, state.Board)
-
-		healthScale := -math.Log2(float64(state.You.Health)) + 5.5
-		log.Printf("snake=%s dir=%s health=%d health_scale=%f food_weight=%f", state.You.ID, dir, state.You.Health, healthScale, fWeight)
-		possibleMoves[dir].weight *= math.Pow(fWeight, math.Max(healthScale, 1))
-
-		snakeWeight := otherSnakeWeight(comparator[dir], state.You, state.Board)
-		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
-		log.Printf("snake=%s dir=%s snake_weight=%f", state.You.ID, dir, snakeWeight)
-
-		collisionWeight := collisionWeight(move, state.You, state.Board)
-		possibleMoves[dir].weight *= math.Pow(collisionWeight, 2)
-		log.Printf("snake=%s dir=%s collision_weight=%f", state.You.ID, dir, collisionWeight)
-
-		openSpaces := numOpenSpaces(nextBody(moves[dir], state.You.Body, state.Board), state.Board)
-		log.Printf("snake=%s dir=%s open_spaces=%d", state.You.ID, dir, openSpaces)
-		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64((state.Board.Height)*(state.Board.Width)), 2)
+	direction := state.You.Direction()
+	if len(movesList) > 0 {
+		direction = movesList[0]
+	} else {
+		_ = level.Warn(logger).Log("msg", "no available moves, continuing in direction", "direction", direction)
 	}
 
-	nextMove := possibleMoves["up"]
-
-	possibleMovesList := []*pMove{}
-	for _, m := range possibleMoves {
-		if !m.permanentNo {
-			possibleMovesList = append(possibleMovesList, m)
-		}
-	}
-	sort.Slice(possibleMovesList, func(i, j int) bool {
-		return possibleMovesList[i].weight > possibleMovesList[j].weight
+	sort.Slice(movesList, func(i, j int) bool {
+		return survivability[movesList[i]] < survivability[movesList[j]]
 	})
 
-	if len(possibleMovesList) > 0 {
-		nextMove = possibleMovesList[0]
-		if possibleMovesList[0].weight == 0.0 {
-			log.Printf("Moving randomly because no viable option")
-			nextMove = possibleMovesList[rand.Intn(len(possibleMovesList))]
-		}
-	} else {
-		log.Printf("snake_id=%s Absolutely no possible moves\n", state.You.ID)
-	}
-
-	log.Printf("snake_id=%s %s MOVE %d: %s %f\n", state.You.ID, state.Game.ID, state.Turn, nextMove.dir, nextMove.weight)
+	move := directionToMove[direction]
+	_ = level.Debug(logger).Log(
+		"msg", "making move",
+		"move", move,
+		"survivability", survivability,
+		"took_ms", time.Since(start).Milliseconds(),
+	)
 
 	return BattlesnakeMoveResponse{
-		Move: nextMove.dir,
+		Move: move,
 	}
 }

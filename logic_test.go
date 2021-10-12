@@ -2,8 +2,6 @@ package main
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNeckAvoidance(t *testing.T) {
@@ -50,19 +48,4 @@ func TestMove(t *testing.T) {
 
 	m := move(state)
 	t.Log(m.Move)
-}
-
-// TODO: More GameState test cases!
-func TestNextBody(t *testing.T) {
-	up := Coord{0, 1}
-	myBody := []Coord{
-		{2, 2}, {1, 2},
-	}
-	board := Board{
-		Height: 5,
-		Width:  5,
-	}
-	nBody := nextBody(up, myBody, board)
-	assert.Len(t, nBody, 2)
-	assert.EqualValues(t, []Coord{{2, 3}, {2, 2}}, nBody)
 }
