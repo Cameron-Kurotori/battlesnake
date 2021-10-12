@@ -189,6 +189,13 @@ func collisionWeight(dir Direction, me Battlesnake, board Board) float64 {
 	return weight
 }
 
+func edgeWeight(dir Direction, me Battlesnake, board Board) float64 {
+	nextHead := me.Next(dir, board)[0]
+	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X))
+	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y))
+	return (closestX / float64(board.Width) / 2.0) * (closestY / float64(board.Height) / 2.0)
+}
+
 // This function is called on every turn of a game. Use the provided GameState to decide
 // where to move -- valid moves are BattlesnakeMove_Up, BattlesnakeMove_Down, BattlesnakeMove_Left, or BattlesnakeMove_Right.
 // We've provided some code and comments to get you started.
@@ -227,19 +234,23 @@ func move(state GameState) BattlesnakeMoveResponse {
 		collisionWeight := collisionWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(collisionWeight, 2)
 
+		edgeWeight := edgeWeight(dir, state.You, state.Board)
+		possibleMoves[dir].weight *= edgeWeight
+
 		openSpaces := numOpenSpaces(state.You.Next(dir, state.Board), state.Board)
 		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard), 2)
 
 		_ = level.Info(dirLogger).Log(
 			"msg", "heuristics calculated",
-			"open_spaces", openSpaces,
-			"total_open_spaces", openSpacesOnBoard,
-			"health", state.You.Health,
-			"health_scale", healthScale,
-			"food_weight", fWeight,
-			"snake_weight", snakeWeight,
 			"collision_weight", collisionWeight,
+			"edge_weight", edgeWeight,
 			"final_weight", possibleMoves[dir].weight,
+			"food_weight", fWeight,
+			"health_scale", healthScale,
+			"health", state.You.Health,
+			"open_spaces", openSpaces,
+			"snake_weight", snakeWeight,
+			"total_open_spaces", openSpacesOnBoard,
 		)
 
 	}
