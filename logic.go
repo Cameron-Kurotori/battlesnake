@@ -109,22 +109,18 @@ func findClosest(dir Direction, me Battlesnake, board Board, coords []Coord) flo
 
 // 1.0 = no collision predicted
 // 0.0 = guaranteed collision
-func collisionWeight(logger log.Logger, dir Direction, me Battlesnake, board Board) float64 {
-	weight := 1.0
+func snakeCollisionScore(logger log.Logger, dir Direction, me Battlesnake, snake Battlesnake, board Board) float64 {
 	myNextBody := me.Next(dir, board).Body
-	for _, snake := range board.OtherSnakes(me.ID) {
-		snakeCollisionScore := 1.0
-		for _, otherDir := range snake.Moves(logger) {
-			nextSnake := snake.Next(otherDir, board).Body
-			if headOnCollision(myNextBody, nextSnake) && me.Length < snake.Length {
-				snakeCollisionScore -= 1.0 / 3.0
-			} else if bodyCollision(myNextBody, nextSnake) {
-				snakeCollisionScore -= 1.0 / 3.0
-			}
+	snakeCollisionScore := 1.0
+	for _, otherDir := range snake.Moves(logger) {
+		nextSnake := snake.Next(otherDir, board).Body
+		if headOnCollision(myNextBody, nextSnake) && me.Length < snake.Length {
+			snakeCollisionScore -= 1.0 / 3.0
+		} else if bodyCollision(myNextBody, nextSnake) {
+			snakeCollisionScore -= 1.0 / 3.0
 		}
-		weight *= snakeCollisionScore
 	}
-	return weight
+	return snakeCollisionScore
 }
 
 // 0.0 - many snakes (dangerous) in this direction or close
@@ -195,11 +191,11 @@ func move(state GameState) BattlesnakeMoveResponse {
 
 	for _, dir := range state.You.Moves(logger) {
 		dirLogger := log.With(logger, "dir", dir)
-		nextBody := state.You.Next(dir, state.Board).Body
-		if state.Board.OutOfBounds(nextBody[0]) {
+		nextSnake := state.You.Next(dir, state.Board)
+		if state.Board.OutOfBounds(nextSnake.Head) {
 			_ = level.Debug(dirLogger).Log("msg", "out of bounds")
 			continue
-		} else if state.Board.Occupied(nextBody[0]) {
+		} else if state.Board.Occupied(nextSnake.Head) {
 			_ = level.Debug(dirLogger).Log("msg", "occupied")
 			continue
 		}
@@ -220,8 +216,24 @@ func move(state GameState) BattlesnakeMoveResponse {
 		snakeWeight := calculateSnakeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
 
-		collisionWeight := collisionWeight(dirLogger, dir, state.You, state.Board)
-		possibleMoves[dir].weight *= math.Pow(collisionWeight, 2)
+		allCollisionWeight := 1.0
+		immediateCollisionWeight := 1.0
+		for _, snake := range otherSnakes {
+			collisionScore := snakeCollisionScore(logger, dir, state.You, snake, state.Board)
+			allCollisionWeight *= collisionScore
+			if snake.Head.Manhattan(nextSnake.Head) == 1 {
+				immediateCollisionScore := collisionScore
+				if snake.Length < nextSnake.Length {
+					immediateCollisionScore = 1 - immediateCollisionScore
+				} else {
+					immediateCollisionScore = math.Pow(immediateCollisionScore, 2.0)
+				}
+				immediateCollisionWeight *= immediateCollisionScore
+			}
+		}
+
+		possibleMoves[dir].weight *= math.Pow(allCollisionWeight, 2)
+		possibleMoves[dir].weight *= math.Pow(allCollisionWeight, 6)
 
 		edgeWeight := edgeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(edgeWeight, math.Sqrt(float64(state.Turn+1))/6.0)
@@ -234,7 +246,8 @@ func move(state GameState) BattlesnakeMoveResponse {
 		}
 		_ = level.Info(dirLogger).Log(
 			"msg", "heuristics calculated",
-			"collision_weight", collisionWeight,
+			"collision_weight_all", allCollisionWeight,
+			"collision_weight_immediate", immediateCollisionWeight,
 			"edge_weight", edgeWeight,
 			"final_weight", possibleMoves[dir].weight,
 			"food_distance_ratio", foodDistRatio,
