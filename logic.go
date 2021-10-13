@@ -97,19 +97,23 @@ func numOpenSpaces(logger log.Logger, newHead Coord, board Board) int {
 }
 
 // [0, 1]
-// 1 - far away
-// 0 - very close
-func findClosest(dir Direction, me Battlesnake, board Board, coords []Coord) float64 {
-	max := float64(board.Width + board.Height)
-	distance := max
-	for _, c := range coords {
-		if c.InDirectionOf(me.Head, dir) {
-			if d := float64(me.Head.Manhattan(c)); d < distance {
-				distance = d
-			}
+// 0 = lots, close
+// 1 = few, far
+func foodAvailability(dir Direction, me Battlesnake, board Board) (val float64) {
+	defer func() {
+		val = ratioSigmoid(val)
+	}()
+	if len(board.Food) == 0 {
+		return 1.0
+	}
+
+	sum := 0.0
+	for _, food := range board.Food {
+		if food.InDirectionOf(me.Head, dir) {
+			sum += math.Pow(float64(food.Manhattan(me.Head))/float64(board.Height*board.Width), 2.0)
 		}
 	}
-	return ratioSigmoid(distance / max)
+	return math.Sqrt(sum) / float64(len(board.Food))
 }
 
 // [0, 1]
@@ -219,14 +223,13 @@ func move(state GameState) BattlesnakeMoveResponse {
 			weight: 1.0,
 		}
 
-		// [0, 1] (0 = close, 1 = far)
-		foodDistRatio := findClosest(dir, state.You, state.Board, state.Board.Food)
+		foodDistRatio := foodAvailability(dir, state.You, state.Board)
 		foodExponent := 1.0
 		if state.You.Health < 60 || avgLenDiff > -1 {
 			if state.You.Health < 60 {
 				foodExponent = math.Max(1.0, -math.Log(float64(state.You.Health-5))+5)
 			} else {
-				foodExponent = math.Max(1.0, math.Log(-avgLenDiff)+1)
+				foodExponent = 1.5*math.Log(avgLenDiff+3) + 1
 			}
 			foodDistRatio = 1 - foodDistRatio
 		}
