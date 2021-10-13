@@ -92,6 +92,8 @@ func numOpenSpaces(logger log.Logger, newHead Coord, board Board) int {
 	return len(set) - 1
 }
 
+// 1.0 = far away
+// -> 0 very close
 func findClosest(dir Direction, me Battlesnake, board Board, coords []Coord) float64 {
 	max := float64(board.Width + board.Height)
 	distance := max
@@ -208,10 +210,12 @@ func move(state GameState) BattlesnakeMoveResponse {
 
 		// further = 1, closer -> 0
 		foodDistRatio := findClosest(dir, state.You, state.Board, state.Board.Food)
+		foodExponent := 1.0
 		if state.You.Health < 60 || avgLenDiff > -1 {
+			foodExponent = math.Max(1.0, -math.Log(float64(state.You.Health-5))+5)
 			foodDistRatio = 1 - foodDistRatio
 		}
-		possibleMoves[dir].weight *= math.Pow(foodDistRatio, 1.0)
+		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent)
 
 		snakeWeight := calculateSnakeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
