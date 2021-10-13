@@ -162,6 +162,13 @@ type pMove struct {
 	weight float64
 }
 
+func (p pMove) Weight() float64 {
+	if math.IsNaN(p.weight) {
+		return -100
+	}
+	return p.weight
+}
+
 // This function is called on every turn of a game. Use the provided GameState to decide
 // where to move -- valid moves are BattlesnakeMove_Up, BattlesnakeMove_Down, BattlesnakeMove_Left, or BattlesnakeMove_Right.
 // We've provided some code and comments to get you started.
@@ -212,9 +219,11 @@ func move(state GameState) BattlesnakeMoveResponse {
 			foodDistRatio = 1 - foodDistRatio
 		}
 		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent)
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "food", "weight", possibleMoves[dir].Weight())
 
 		snakeWeight := calculateSnakeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "snake weight", "weight", possibleMoves[dir].Weight())
 
 		allCollisionWeight := 1.0
 		immediateCollisionWeight := 1.0
@@ -232,24 +241,25 @@ func move(state GameState) BattlesnakeMoveResponse {
 			}
 		}
 
-		possibleMoves[dir].weight *= math.Pow(allCollisionWeight, 2)
-		possibleMoves[dir].weight *= math.Pow(allCollisionWeight, 6)
+		possibleMoves[dir].weight *= math.Pow(allCollisionWeight, 2.0)
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "all collisions", "weight", possibleMoves[dir].Weight())
+		possibleMoves[dir].weight *= math.Pow(immediateCollisionWeight, 6.0)
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "immediate collisions", "weight", possibleMoves[dir].Weight())
 
 		edgeWeight := edgeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(edgeWeight, math.Sqrt(float64(state.Turn+1))/6.0)
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "edge weight", "weight", possibleMoves[dir].Weight())
 
 		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
-		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard+1), 3)
+		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard+1), 3.0)
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "open spaces", "weight", possibleMoves[dir].Weight())
 
-		if math.IsNaN(possibleMoves[dir].weight) {
-			possibleMoves[dir].weight = -100
-		}
 		_ = level.Info(dirLogger).Log(
 			"msg", "heuristics calculated",
 			"collision_weight_all", allCollisionWeight,
 			"collision_weight_immediate", immediateCollisionWeight,
 			"edge_weight", edgeWeight,
-			"final_weight", possibleMoves[dir].weight,
+			"final_weight", possibleMoves[dir].Weight(),
 			"food_distance_ratio", foodDistRatio,
 			"health", state.You.Health,
 			"open_spaces", openSpaces,
@@ -264,13 +274,13 @@ func move(state GameState) BattlesnakeMoveResponse {
 		possibleMovesList = append(possibleMovesList, m)
 	}
 	sort.Slice(possibleMovesList, func(i, j int) bool {
-		return possibleMovesList[i].weight > possibleMovesList[j].weight
+		return possibleMovesList[i].Weight() > possibleMovesList[j].Weight()
 	})
 
 	var nextMove *pMove
 	if len(possibleMovesList) > 0 {
 		nextMove = possibleMovesList[0]
-		if possibleMovesList[0].weight == 0.0 {
+		if possibleMovesList[0].Weight() == 0.0 {
 			_ = level.Debug(logger).Log("msg", "Moving randomly because no viable option")
 			nextMove = possibleMovesList[rand.Intn(len(possibleMovesList))]
 		}
@@ -281,7 +291,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		_ = level.Debug(logger).Log("msg", "Absolutely no possible moves")
 	}
 
-	err := level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.weight, "took_ms", time.Since(start).Milliseconds())
+	err := level.Info(logger).Log("msg", "making move", "move", nextMove.dir, "weight", nextMove.Weight(), "took_ms", time.Since(start).Milliseconds())
 	if err != nil {
 		_ = level.Error(logger).Log("msg", "erorr while logging", "err", err)
 	}
