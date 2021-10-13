@@ -120,6 +120,21 @@ func foodAvailability(dir Direction, me Battlesnake, board Board) (val float64) 
 	return math.Sqrt(sum / float64(len(board.Food)))
 }
 
+func immediateSpace(target Coord, board Board) float64 {
+	count := 0
+	for _, dir := range []Direction{
+		{-1, 1}, {0, 1}, {1, 1},
+		{-1, 0}, {1, 0},
+		{-1, -1}, {0, -1}, {1, -1},
+	} {
+		t := target.Add(Coord(dir))
+		if !(board.OutOfBounds(t) || board.Occupied(t)) {
+			count++
+		}
+	}
+	return ratioSigmoid(float64(count) / 8.0) // entry always blocked
+}
+
 // [0, 1]
 // 1.0 = no collision predicted
 // 0.0 = guaranteed collision
@@ -266,9 +281,8 @@ func move(state GameState) BattlesnakeMoveResponse {
 		possibleMoves[dir].weight *= math.Pow(immediateCollisionWeight, 6.0)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "immediate collisions", "weight", possibleMoves[dir].Weight())
 
-		// edgeWeight := edgeWeight(dir, state.You, state.Board)
-		// possibleMoves[dir].weight *= math.Pow(edgeWeight, math.Sqrt(float64(state.Turn+1))/6.0)
-		// _ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "edge weight", "weight", possibleMoves[dir].Weight())
+		immediateSpaceScore := immediateSpace(nextSnake.Head, state.Board)
+		possibleMoves[dir].weight *= math.Pow(immediateSpaceScore, 1.0)
 
 		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
 		possibleMoves[dir].weight *= math.Pow(ratioSigmoid(float64(openSpaces)/float64(openSpacesOnBoard)), 3.0)
@@ -278,10 +292,10 @@ func move(state GameState) BattlesnakeMoveResponse {
 			"msg", "heuristics calculated",
 			"collision_weight_all", allCollisionWeight,
 			"collision_weight_immediate", immediateCollisionWeight,
-			// "edge_weight", edgeWeight,
 			"final_weight", possibleMoves[dir].Weight(),
 			"food_distance_ratio", foodDistRatio,
 			"health", state.You.Health,
+			"immediate_space", immediateSpaceScore,
 			"open_spaces", openSpaces,
 			"snake_weight", snakeWeight,
 			"total_open_spaces", openSpacesOnBoard,
