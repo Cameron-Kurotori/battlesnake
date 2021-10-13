@@ -215,7 +215,11 @@ func move(state GameState) BattlesnakeMoveResponse {
 		foodDistRatio := findClosest(dir, state.You, state.Board, state.Board.Food)
 		foodExponent := 1.0
 		if state.You.Health < 60 || avgLenDiff > -1 {
-			foodExponent = math.Max(1.0, -math.Log(float64(state.You.Health-5))+5)
+			if state.You.Health < 60 {
+				foodExponent = math.Max(1.0, -math.Log(float64(state.You.Health-5))+5)
+			} else {
+				foodExponent = math.Max(1.0, math.Log(-avgLenDiff)+1)
+			}
 			foodDistRatio = 1 - foodDistRatio
 		}
 		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent)
