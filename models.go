@@ -14,6 +14,18 @@ type GameState struct {
 	You   Battlesnake `json:"you"`
 }
 
+func (state GameState) Next(dir Direction) GameState {
+	state.You = state.You.Next(dir, state.Board)
+	state.You.Head = state.You.Body[0]
+	for i, food := range state.Board.Food {
+		if food == state.You.Head {
+			state.Board.Food = append(state.Board.Food[:i], state.Board.Food[i+1:]...)
+		}
+		break
+	}
+	return state
+}
+
 func (state GameState) Logger(logger log.Logger) log.Logger {
 	return log.With(logger, "game_id", state.Game.ID, "snake_id", state.You.ID, "alive_snakes", len(state.Board.Snakes), "turn", state.Turn)
 }
@@ -30,13 +42,31 @@ type Ruleset struct {
 }
 
 type Board struct {
-	Height int           `json:"height"`
-	Width  int           `json:"width"`
-	Food   []Coord       `json:"food"`
-	Snakes []Battlesnake `json:"snakes"`
+	Height      int           `json:"height"`
+	Width       int           `json:"width"`
+	Food        []Coord       `json:"food"`
+	Snakes      []Battlesnake `json:"snakes"`
+	otherSnakes map[string][]Battlesnake
 
 	// Used in non-standard game modes
 	Hazards []Coord `json:"hazards"`
+}
+
+func (b Board) OtherSnakes(myID string) []Battlesnake {
+	others := b.otherSnakes[myID]
+	if others == nil {
+		others = make([]Battlesnake, len(b.Snakes)-1)
+		i := 0
+		for _, snake := range b.Snakes {
+			if snake.ID == myID {
+				continue
+			}
+			others[i] = snake
+			i++
+		}
+		b.otherSnakes[myID] = others
+	}
+	return others
 }
 
 func (b Board) OutOfBounds(c Coord) bool {
@@ -95,14 +125,19 @@ type Battlesnake struct {
 
 // Next returns back a new slice of coordinates the represents the new snake body
 // If addOne is `true` then the body has an additional segment
-func (snake Battlesnake) Next(dir Direction, board Board) []Coord {
+func (snake Battlesnake) Next(dir Direction, board Board) Battlesnake {
 	nextBody := make([]Coord, 1)
 	nextBody[0] = Coord(dir).Add(snake.Body[0])
 	nextBody = append(nextBody, snake.Body...)
 	if CoordSliceContains(nextBody[0], board.Food) {
 		nextBody = nextBody[:len(nextBody)-1]
+		snake.Health++
 	}
-	return nextBody
+	snake.Body = nextBody
+	snake.Head = nextBody[0]
+	snake.Length = int32(len(nextBody))
+
+	return snake
 }
 
 func (snake Battlesnake) Moves(logger log.Logger) []Direction {
@@ -151,6 +186,10 @@ var directionToMove = map[Direction]BattlesnakeMove{
 type Coord struct {
 	X int `json:"x"`
 	Y int `json:"y"`
+}
+
+func (c Coord) InDirectionOf(source Coord, dir Direction) bool {
+	return inDirectionOf[dir](source, c)
 }
 
 // Add gets the sum of the individual axis of this coordinate and another: {x1 + x2, y1 + y2}

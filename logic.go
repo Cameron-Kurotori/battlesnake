@@ -62,14 +62,15 @@ func headOnCollision(me, other []Coord) bool {
 }
 
 func bodyCollision(me, other []Coord) bool {
-	return CoordSliceContains(me[0], other)
+	return CoordSliceContains(me[0], other[1:])
 }
 
 func dist(c1, c2 Coord) float64 {
 	return math.Abs(float64(c1.X-c2.X)) + math.Abs(float64(c1.Y-c2.Y))
 }
 
-func numOpenSpaces(logger log.Logger, body []Coord, board Board) int {
+// the number of spaces available if taking position new head
+func numOpenSpaces(logger log.Logger, newHead Coord, board Board) int {
 	set := map[Coord]bool{}
 
 	isOccupied := func(target Coord) bool {
@@ -79,7 +80,7 @@ func numOpenSpaces(logger log.Logger, body []Coord, board Board) int {
 
 	var recurse func(target Coord)
 	recurse = func(target Coord) {
-		if _, done := set[target]; done || (target != body[0] && isOccupied(target)) {
+		if _, done := set[target]; done || (target != newHead && isOccupied(target)) {
 			return
 		}
 		set[target] = true
@@ -90,7 +91,7 @@ func numOpenSpaces(logger log.Logger, body []Coord, board Board) int {
 		recurse(Coord{target.X, target.Y - 1})
 	}
 
-	recurse(body[0])
+	recurse(newHead)
 
 	return len(set) - 1
 }
@@ -110,94 +111,76 @@ var comparator = map[Direction]func(c1, c2 Coord) bool{
 	},
 }
 
-// foodWeight should return a floating point number indicative of
-// food availability
-func foodWeight(inDirection func(Coord, Coord) bool, head Coord, board Board) float64 {
-	count := 0
-	distAway := 0.0 // steps * food
-	for _, food := range board.Food {
-		if inDirection(food, head) {
-			count++
-			distAway += math.Pow(float64(head.Manhattan(food)), 2)
-		}
-	}
-
-	totalStepsAcrossBoard := Coord{0, 0}.Manhattan(Coord{board.Width, board.Height})
-
-	if count == 0 || len(board.Food) == 0 {
-		return 0
-	}
-
-	avgDistAway := distAway / float64(count) // steps^2
-
-	componentAvgDistAway := 1 - (avgDistAway / math.Pow(float64(totalStepsAcrossBoard), 2)) // no units
-	foodRatio := (float64(count)) / float64(len(board.Food))                                // no units
-
-	return componentAvgDistAway * foodRatio
-}
-
-func otherSnakeWeight(inDirection func(Coord, Coord) bool, me Battlesnake, board Board) float64 {
-	head := me.Head
-	count := 0
-	distAway := 0.0
-	for _, snake := range otherSnakes(me.ID, board.Snakes) {
-		if inDirection(snake.Head, head) {
-			if snake.Length >= me.Length {
-				count++
-				distAway += dist(head, snake.Head)
-			} else {
-				_ = level.Debug(logging.GlobalLogger()).Log("msg", "snake is shorter and in this direction... KILL THEM", "other_snake", snake.ID, "their_length", snake.Length, "snake_id", me.ID, "my_length", me.Length)
+func findClosest(dir Direction, me Battlesnake, board Board, coords []Coord) float64 {
+	max := float64(board.Width + board.Height)
+	distance := max
+	for _, c := range coords {
+		if c.InDirectionOf(me.Head, dir) {
+			if d := float64(me.Head.Manhattan(c)); d < distance {
+				distance = d
 			}
 		}
 	}
-	if count == 0 {
-		return 1
-	}
-	avgDistAway := distAway / float64(count)
-
-	return (avgDistAway / dist(Coord{0, 0}, Coord{board.Height, board.Width})) / float64(count)
+	return distance / max
 }
 
-func otherSnakes(myID string, snakes []Battlesnake) []Battlesnake {
-	otherSnakes := make([]Battlesnake, len(snakes)-1)
-	i := 0
-	for _, snake := range snakes {
-		if snake.ID == myID {
-			continue
+// 1.0 = no collision predicted
+// 0.0 = guaranteed collision
+func collisionWeight(logger log.Logger, dir Direction, me Battlesnake, board Board) float64 {
+	weight := 1.0
+	myNextBody := me.Next(dir, board).Body
+	for _, snake := range board.OtherSnakes(me.ID) {
+		snakeCollisionScore := 1.0
+		for _, otherDir := range snake.Moves(logger) {
+			nextSnake := snake.Next(otherDir, board).Body
+			if headOnCollision(myNextBody, nextSnake) && me.Length < snake.Length {
+				snakeCollisionScore -= 1.0 / 3.0
+			} else if bodyCollision(myNextBody, nextSnake) {
+				snakeCollisionScore -= 1.0 / 3.0
+			}
 		}
-		otherSnakes[i] = snake
-		i++
+		weight *= snakeCollisionScore
 	}
-	return otherSnakes
+	return weight
+}
+
+// 0.0 - many snakes (dangerous) in this direction or close
+// 1.0 - not many snakes (dangerous) in this direction or far away
+func calculateSnakeWeight(dir Direction, me Battlesnake, board Board) float64 {
+	totalSnakeDistances := 0
+	directionalDistances := []int{}
+	for _, snake := range board.OtherSnakes(me.ID) {
+		if me.Length-snake.Length >= 1 {
+			snakeDist := snake.Head.Manhattan(me.Head)
+			totalSnakeDistances += snakeDist
+			if snake.Head.InDirectionOf(me.Head, dir) {
+				directionalDistances = append(directionalDistances, snakeDist)
+			}
+		}
+	}
+	if len(directionalDistances) == 0 {
+		return 1.0
+	}
+
+	sum := 0.0
+	for _, dist := range directionalDistances {
+		sum += math.Pow(float64(dist)/float64(totalSnakeDistances), 2)
+	}
+	return math.Sqrt(sum)
+}
+
+// 1.0 = furthest possibly away
+// 0.0 = on border
+func edgeWeight(dir Direction, me Battlesnake, board Board) float64 {
+	nextHead := me.Next(dir, board).Head
+	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X)) + 1
+	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y)) + 1
+	return (closestX / float64(board.Width+1) / 2.0) * (closestY / float64(board.Height+1) / 2.0)
 }
 
 type pMove struct {
 	dir    BattlesnakeMove
 	weight float64
-}
-
-func collisionWeight(logger log.Logger, dir Direction, me Battlesnake, board Board) float64 {
-	weight := 1.0
-	myNextBody := me.Next(dir, board)
-	for _, snake := range otherSnakes(me.ID, board.Snakes) {
-		for _, otherDir := range snake.Moves(logger) {
-			nextSnake := snake.Next(otherDir, board)
-			if headOnCollision(myNextBody, nextSnake) && me.Length < snake.Length {
-				weight *= 1.0 / 3
-			}
-			if bodyCollision(myNextBody, nextSnake) {
-				return 0
-			}
-		}
-	}
-	return weight
-}
-
-func edgeWeight(dir Direction, me Battlesnake, board Board) float64 {
-	nextHead := me.Next(dir, board)[0]
-	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X)) + 1
-	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y)) + 1
-	return (closestX / float64(board.Width+1) / 2.0) * (closestY / float64(board.Height+1) / 2.0)
 }
 
 // This function is called on every turn of a game. Use the provided GameState to decide
@@ -214,13 +197,22 @@ func move(state GameState) BattlesnakeMoveResponse {
 		openSpacesOnBoard -= int(snake.Length)
 	}
 
+	otherSnakes := state.Board.OtherSnakes(state.You.ID)
+
 	totalLenDiff := 0.0
-	for _, snake := range otherSnakes(state.You.ID, state.Board.Snakes) {
+	for _, snake := range otherSnakes {
 		totalLenDiff += float64(snake.Length - state.You.Length)
 	}
+	avgLenDiff := totalLenDiff / float64(len(otherSnakes))
+
+	snakeHeads := make([]Coord, len(otherSnakes))
+	for i, snake := range otherSnakes {
+		snakeHeads[i] = snake.Head
+	}
+
 	for _, dir := range state.You.Moves(logger) {
 		dirLogger := log.With(logger, "dir", dir)
-		nextBody := state.You.Next(dir, state.Board)
+		nextBody := state.You.Next(dir, state.Board).Body
 		if state.Board.OutOfBounds(nextBody[0]) {
 			_ = level.Debug(dirLogger).Log("msg", "out of bounds")
 			continue
@@ -233,25 +225,24 @@ func move(state GameState) BattlesnakeMoveResponse {
 			weight: 1.0,
 		}
 
-		foodAvailability := foodWeight(comparator[dir], state.You.Head, state.Board)
-		avgLenDiff := totalLenDiff / float64(len(otherSnakes(state.You.ID, state.Board.Snakes)))
-		healthScale := foodAvailability
-		if state.You.Health > 60 && avgLenDiff < 0 {
-			healthScale = 1 - foodAvailability
+		// further = 1, closer -> 0
+		foodDistRatio := findClosest(dir, state.You, state.Board, state.Board.Food)
+		if state.You.Health < 60 || avgLenDiff > -1 {
+			foodDistRatio = 1 - foodDistRatio
 		}
-		possibleMoves[dir].weight *= math.Pow(healthScale, 0.5*math.Sqrt(math.Max(0, avgLenDiff)))
+		possibleMoves[dir].weight *= math.Pow(foodDistRatio, 1.0)
 
-		snakeWeight := otherSnakeWeight(comparator[dir], state.You, state.Board)
+		snakeWeight := calculateSnakeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
 
 		collisionWeight := collisionWeight(dirLogger, dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(collisionWeight, 2)
 
 		edgeWeight := edgeWeight(dir, state.You, state.Board)
-		possibleMoves[dir].weight *= math.Pow(edgeWeight, math.Sqrt(float64(state.Turn))/6.0)
+		possibleMoves[dir].weight *= math.Pow(edgeWeight, math.Sqrt(float64(state.Turn+1))/6.0)
 
-		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board), state.Board)
-		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard), 2)
+		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
+		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard+1), 3)
 
 		if math.IsNaN(possibleMoves[dir].weight) {
 			possibleMoves[dir].weight = -100
@@ -261,7 +252,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 			"collision_weight", collisionWeight,
 			"edge_weight", edgeWeight,
 			"final_weight", possibleMoves[dir].weight,
-			"food_availability", foodAvailability,
+			"food_distance_ratio", foodDistRatio,
 			"health", state.You.Health,
 			"open_spaces", openSpaces,
 			"snake_weight", snakeWeight,
