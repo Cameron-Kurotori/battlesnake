@@ -20,8 +20,8 @@ func (state GameState) Next(dir Direction) GameState {
 	for i, food := range state.Board.Food {
 		if food == state.You.Head {
 			state.Board.Food = append(state.Board.Food[:i], state.Board.Food[i+1:]...)
+			break
 		}
-		break
 	}
 	return state
 }
@@ -53,6 +53,9 @@ type Board struct {
 }
 
 func (b Board) OtherSnakes(myID string) []Battlesnake {
+	if b.otherSnakes == nil {
+		b.otherSnakes = map[string][]Battlesnake{}
+	}
 	others := b.otherSnakes[myID]
 	if others == nil {
 		others = make([]Battlesnake, len(b.Snakes)-1)

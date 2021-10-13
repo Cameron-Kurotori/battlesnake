@@ -65,10 +65,6 @@ func bodyCollision(me, other []Coord) bool {
 	return CoordSliceContains(me[0], other[1:])
 }
 
-func dist(c1, c2 Coord) float64 {
-	return math.Abs(float64(c1.X-c2.X)) + math.Abs(float64(c1.Y-c2.Y))
-}
-
 // the number of spaces available if taking position new head
 func numOpenSpaces(logger log.Logger, newHead Coord, board Board) int {
 	set := map[Coord]bool{}
@@ -94,21 +90,6 @@ func numOpenSpaces(logger log.Logger, newHead Coord, board Board) int {
 	recurse(newHead)
 
 	return len(set) - 1
-}
-
-var comparator = map[Direction]func(c1, c2 Coord) bool{
-	Direction_Up: func(c1, c2 Coord) bool {
-		return c1.Y > c2.Y
-	},
-	Direction_Down: func(c1, c2 Coord) bool {
-		return c1.Y < c2.Y
-	},
-	Direction_Left: func(c1, c2 Coord) bool {
-		return c1.X < c2.X
-	},
-	Direction_Right: func(c1, c2 Coord) bool {
-		return c1.X > c2.X
-	},
 }
 
 func findClosest(dir Direction, me Battlesnake, board Board, coords []Coord) float64 {
