@@ -101,6 +101,7 @@ func numOpenSpaces(logger log.Logger, newHead Coord, board Board) int {
 // 1 = few, far
 func foodAvailability(dir Direction, me Battlesnake, board Board) (val float64) {
 	defer func() {
+		_ = level.Debug(logging.GlobalLogger()).Log("msg", "updating food availability val", "value", val)
 		val = ratioSigmoid(val)
 	}()
 	if len(board.Food) == 0 {
@@ -110,7 +111,7 @@ func foodAvailability(dir Direction, me Battlesnake, board Board) (val float64) 
 	sum := 0.0
 	for _, food := range board.Food {
 		if food.InDirectionOf(me.Head, dir) {
-			sum += math.Pow(float64(food.Manhattan(me.Head))/float64(board.Height*board.Width), 2.0)
+			sum += math.Pow(float64(food.Manhattan(me.Head))/float64(board.Height+board.Width), 2.0)
 		}
 	}
 	return math.Sqrt(sum / float64(len(board.Food)))
