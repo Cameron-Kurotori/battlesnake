@@ -114,6 +114,9 @@ func foodAvailability(dir Direction, me Battlesnake, board Board) (val float64) 
 			sum += math.Pow(float64(food.Manhattan(me.Head))/float64(board.Height+board.Width), 2.0)
 		}
 	}
+	if sum == 0 {
+		return 1.0
+	}
 	return math.Sqrt(sum / float64(len(board.Food)))
 }
 
