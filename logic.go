@@ -57,6 +57,10 @@ func nextBody(move Coord, body []Coord, board Board) []Coord {
 	return next
 }
 
+func ratioSigmoid(x float64) float64 {
+	return 1.0 / (1 + math.Pow(math.E, -10.0*(x-0.5)))
+}
+
 func headOnCollision(me, other []Coord) bool {
 	return me[0] == other[0]
 }
@@ -92,8 +96,9 @@ func numOpenSpaces(logger log.Logger, newHead Coord, board Board) int {
 	return len(set) - 1
 }
 
-// 1.0 = far away
-// -> 0 very close
+// [0, 1]
+// 1 - far away
+// 0 - very close
 func findClosest(dir Direction, me Battlesnake, board Board, coords []Coord) float64 {
 	max := float64(board.Width + board.Height)
 	distance := max
@@ -104,9 +109,10 @@ func findClosest(dir Direction, me Battlesnake, board Board, coords []Coord) flo
 			}
 		}
 	}
-	return distance / max
+	return ratioSigmoid(distance / max)
 }
 
+// [0, 1]
 // 1.0 = no collision predicted
 // 0.0 = guaranteed collision
 func snakeCollisionScore(logger log.Logger, dir Direction, me Battlesnake, snake Battlesnake, board Board) float64 {
@@ -120,11 +126,12 @@ func snakeCollisionScore(logger log.Logger, dir Direction, me Battlesnake, snake
 			snakeCollisionScore -= 1.0 / 3.0
 		}
 	}
-	return snakeCollisionScore
+	return ratioSigmoid(snakeCollisionScore)
 }
 
-// 0.0 - many snakes (dangerous) in this direction or close
-// 1.0 - not many snakes (dangerous) in this direction or far away
+// [0, 1]
+// 0 = many snakes (dangerous) in this direction or close 1 = not many snakes
+// 1 = not many snakes (dangerous) in this direction or far away
 func calculateSnakeWeight(dir Direction, me Battlesnake, board Board) float64 {
 	totalSnakeDistances := 0
 	directionalDistances := []int{}
@@ -145,16 +152,17 @@ func calculateSnakeWeight(dir Direction, me Battlesnake, board Board) float64 {
 	for _, dist := range directionalDistances {
 		sum += math.Pow(float64(dist)/float64(totalSnakeDistances), 2)
 	}
-	return math.Sqrt(sum)
+	return ratioSigmoid(math.Sqrt(sum))
 }
 
-// 1.0 = furthest possibly away
-// 0.0 = on border
+// [0, 1]
+// 0 = on border
+// 1 = in center
 func edgeWeight(dir Direction, me Battlesnake, board Board) float64 {
 	nextHead := me.Next(dir, board).Head
-	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X)) + 1
-	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y)) + 1
-	return (closestX / float64(board.Width+1) / 2.0) * (closestY / float64(board.Height+1) / 2.0)
+	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X))
+	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y))
+	return ratioSigmoid(closestX/math.Floor(float64(board.Width)/2.0)) * (closestY / math.Floor(float64(board.Height)/2.0))
 }
 
 type pMove struct {
@@ -211,7 +219,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 			weight: 1.0,
 		}
 
-		// further = 1, closer -> 0
+		// [0, 1] (0 = close, 1 = far)
 		foodDistRatio := findClosest(dir, state.You, state.Board, state.Board.Food)
 		foodExponent := 1.0
 		if state.You.Health < 60 || avgLenDiff > -1 {
@@ -225,6 +233,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "food", "weight", possibleMoves[dir].Weight())
 
+		// [0, 1]
 		snakeWeight := calculateSnakeWeight(dir, state.You, state.Board)
 		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "snake weight", "weight", possibleMoves[dir].Weight())
@@ -255,7 +264,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "edge weight", "weight", possibleMoves[dir].Weight())
 
 		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
-		possibleMoves[dir].weight *= math.Pow(float64(openSpaces)/float64(openSpacesOnBoard+1), 3.0)
+		possibleMoves[dir].weight *= math.Pow(ratioSigmoid(float64(openSpaces)/float64(openSpacesOnBoard)), 3.0)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "open spaces", "weight", possibleMoves[dir].Weight())
 
 		_ = level.Info(dirLogger).Log(
