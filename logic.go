@@ -274,7 +274,7 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		foodDistRatio := foodAvailability(dir, state.You, state.Board)
 		foodExponent := 1.0
 		if state.You.Health < 60 || avgLenDiff > -1 {
-			foodExponent = (avgLenDiff + 1) / (2.0 * float64(state.You.Health))
+			foodExponent = (avgLenDiff + 1) / (float64(state.You.Health))
 			foodDistRatio = 1 - foodDistRatio
 		}
 
