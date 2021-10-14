@@ -70,6 +70,40 @@ func bodyCollision(me, other []sdk.Coord) bool {
 	return sdk.CoordSliceContains(me[0], other[1:])
 }
 
+func avgGuaranteedReduction(logger log.Logger, dir sdk.Direction, mySnakeID string, board sdk.Board) float64 {
+	simulatedBoard := board
+	simulatedBoard.Snakes = []sdk.Battlesnake{}
+	snakeIndices := map[string]int{}
+	var mySnake sdk.Battlesnake
+	for i, snake := range board.Snakes {
+		snakeIndices[snake.ID] = i
+		simulatedBoard.Snakes = append(simulatedBoard.Snakes, snake)
+		if snake.ID == mySnakeID {
+			mySnake = snake
+		}
+	}
+
+	count := 0
+	guaranteedReduction := 0
+	for _, snake := range board.Snakes {
+		if moves := snake.Moves(logger); len(moves) == 1 {
+			newHead := snake.Next(moves[0], simulatedBoard).Head
+			spacesWithoutMyMove := numOpenSpaces(logger, newHead, simulatedBoard)
+			simulatedBoard.Snakes[snakeIndices[mySnakeID]] = mySnake.Next(dir, board)
+			spacesWithMyMove := numOpenSpaces(logger, newHead, simulatedBoard)
+			simulatedBoard.Snakes[snakeIndices[mySnakeID]] = mySnake
+			guaranteedReduction += spacesWithoutMyMove - spacesWithMyMove
+			count++
+		}
+	}
+
+	if count == 0 {
+		return 0.0
+	}
+
+	return float64(guaranteedReduction) / float64(count)
+}
+
 // the number of spaces available if taking position new head
 func numOpenSpaces(logger log.Logger, newHead sdk.Coord, board sdk.Board) int {
 	set := map[sdk.Coord]bool{}
@@ -286,8 +320,14 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		possibleMoves[dir].weight *= openSpacesWeight
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "open spaces", "weight", possibleMoves[dir].Weight())
 
+		avgGuaranteedReductionRatio := ratioSigmoid(avgGuaranteedReduction(dirLogger, dir, state.You.ID, state.Board) / float64(openSpacesOnBoard))
+		avgGuaranteedReductionRatio = math.Pow(avgGuaranteedReductionRatio, 1.0/16)
+		possibleMoves[dir].weight *= avgGuaranteedReductionRatio
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "guaranteed reduction", "weight", possibleMoves[dir].Weight())
+
 		_ = level.Info(dirLogger).Log(
 			"msg", "heuristics calculated",
+			"can_kill_weight", avgGuaranteedReductionRatio,
 			"collision_weight_all", allCollisionWeight,
 			"collision_weight_immediate", immediateCollisionWeight,
 			"final_weight", possibleMoves[dir].Weight(),
