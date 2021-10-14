@@ -283,7 +283,7 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "food", "weight", possibleMoves[dir].Weight())
 
 		// [0, 1]
-		snakeWeight := math.Pow(calculateSnakeWeight(dir, state.You, state.Board), 1.0)
+		snakeWeight := math.Pow(calculateSnakeWeight(dir, state.You, state.Board), 1.0/4)
 		possibleMoves[dir].weight *= snakeWeight
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "snake weight", "weight", possibleMoves[dir].Weight())
 
