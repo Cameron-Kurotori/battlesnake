@@ -169,7 +169,7 @@ func immediateSpace(target sdk.Coord, board sdk.Board) float64 {
 			count++
 		}
 	}
-	return ratioSigmoid(float64(count) / 8.0) // entry always blocked
+	return ratioSigmoid(float64(count) / 20.0) // entry always blocked
 }
 
 // [0, 1]
