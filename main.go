@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/Cameron-Kurotori/battlesnake/logging"
+	"github.com/Cameron-Kurotori/battlesnake/sdk"
 	"github.com/go-kit/log/level"
 )
 
@@ -25,7 +26,7 @@ func HandleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleStart(w http.ResponseWriter, r *http.Request) {
-	state := GameState{}
+	state := sdk.GameState{}
 	err := json.NewDecoder(r.Body).Decode(&state)
 	if err != nil {
 		_ = level.Debug(logging.GlobalLogger()).Log("msg", fmt.Sprintf("ERROR: Failed to decode start json, %s", err))
@@ -38,14 +39,14 @@ func HandleStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleMove(w http.ResponseWriter, r *http.Request) {
-	state := GameState{}
+	state := sdk.GameState{}
 	err := json.NewDecoder(r.Body).Decode(&state)
 	if err != nil {
 		_ = level.Debug(logging.GlobalLogger()).Log("msg", fmt.Sprintf("ERROR: Failed to decode move json, %s", err))
 		return
 	}
 
-	response := move(state)
+	response := globalMover.Move(state)
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
@@ -56,7 +57,7 @@ func HandleMove(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleEnd(w http.ResponseWriter, r *http.Request) {
-	state := GameState{}
+	state := sdk.GameState{}
 	err := json.NewDecoder(r.Body).Decode(&state)
 	if err != nil {
 		_ = level.Debug(logging.GlobalLogger()).Log("msg", fmt.Sprintf("ERROR: Failed to decode end json, %s", err))

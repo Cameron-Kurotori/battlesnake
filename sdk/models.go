@@ -1,4 +1,4 @@
-package main
+package sdk
 
 import (
 	"math"
@@ -146,7 +146,7 @@ func (snake Battlesnake) Next(dir Direction, board Board) Battlesnake {
 func (snake Battlesnake) Moves(logger log.Logger) []Direction {
 	moves := []Direction{}
 	snakeDirection := snake.Direction()
-	for _, dir := range moveToDirection {
+	for _, dir := range MoveToDirection {
 		if Coord(dir) != Coord(snakeDirection).Reverse() {
 			moves = append(moves, dir)
 		}
@@ -172,14 +172,14 @@ var (
 	Direction_Right = Direction{1, 0}
 )
 
-var moveToDirection = map[BattlesnakeMove]Direction{
+var MoveToDirection = map[BattlesnakeMove]Direction{
 	BattlesnakeMove_Down:  Direction_Down,
 	BattlesnakeMove_Up:    Direction_Up,
 	BattlesnakeMove_Left:  Direction_Left,
 	BattlesnakeMove_Right: Direction_Right,
 }
 
-var directionToMove = map[Direction]BattlesnakeMove{
+var DirectionToMove = map[Direction]BattlesnakeMove{
 	Direction_Down:  BattlesnakeMove_Down,
 	Direction_Up:    BattlesnakeMove_Up,
 	Direction_Left:  BattlesnakeMove_Left,
