@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/Cameron-Kurotori/battlesnake/sdk"
 	"github.com/stretchr/testify/assert"
 )
@@ -66,4 +67,25 @@ func TestNextBody(t *testing.T) {
 	nBody := nextBody(up, myBody, board)
 	assert.Len(t, nBody, 2)
 	assert.EqualValues(t, []sdk.Coord{{2, 3}, {2, 2}}, nBody)
+}
+
+func TestOpenSpaces(t *testing.T) {
+	board := sdk.Board{
+		Width:  11,
+		Height: 11,
+		Snakes: []sdk.Battlesnake{
+			{
+				Body: []sdk.Coord{{5, 3}, {6, 3}, {6, 4}, {5, 4}, {4, 4}, {4, 5}, {5, 5}, {5, 6}, {5, 7}, {5, 8}, {4, 8}, {4, 7}, {3, 7}, {2, 7}, {2, 6}, {2, 5}, {3, 5}, {3, 4}, {3, 3}},
+			},
+			{
+				Body: []sdk.Coord{{4, 2}, {4, 1}, {4, 0}, {3, 0}, {2, 0}, {1, 0}, {1, 1}, {2, 1}, {3, 1}, {3, 2}, {2, 2}, {1, 2}, {0, 2}, {0, 3}, {0, 4}, {0, 5}},
+			},
+		},
+	}
+	for i, snake := range board.Snakes {
+		board.Snakes[i].Length = int32(len(snake.Body))
+	}
+	newHead := sdk.Coord{X: 4, Y: 3}
+	spaces := numOpenSpaces(logging.GlobalLogger(), newHead, board)
+	assert.Equal(t, 0, spaces)
 }

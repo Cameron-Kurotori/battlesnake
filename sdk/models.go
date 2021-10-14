@@ -86,7 +86,7 @@ func (b Board) Occupied(c Coord) bool {
 		return true
 	}
 	for _, snake := range b.Snakes {
-		if CoordSliceContains(c, snake.Body[:snake.Length-1]) {
+		if CoordSliceContains(c, snake.Body[:snake.Length]) {
 			return true
 		}
 	}
