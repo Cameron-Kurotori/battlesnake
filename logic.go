@@ -287,7 +287,7 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "immediate collisions", "weight", possibleMoves[dir].Weight())
 
 		immediateSpaceScore := immediateSpace(nextSnake.Head, state.Board)
-		possibleMoves[dir].weight *= math.Pow(immediateSpaceScore, 1.0/24)
+		possibleMoves[dir].weight *= math.Pow(immediateSpaceScore, 1.0/32)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "immediateSpaceScore", "weight", possibleMoves[dir].Weight())
 
 		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
