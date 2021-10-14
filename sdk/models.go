@@ -16,7 +16,6 @@ type GameState struct {
 
 func (state GameState) Next(dir Direction) GameState {
 	state.You = state.You.Next(dir, state.Board)
-	state.You.Head = state.You.Body[0]
 	for i, food := range state.Board.Food {
 		if food == state.You.Head {
 			state.Board.Food = append(state.Board.Food[:i], state.Board.Food[i+1:]...)

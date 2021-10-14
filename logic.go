@@ -333,7 +333,8 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		possibleMoves[dir].weight *= edgeWeight
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "edge weight", "weight", possibleMoves[dir].Weight())
 
-		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
+		nextGameState := state.Next(dir)
+		openSpaces := numOpenSpaces(dirLogger, nextGameState.You.Head, nextGameState.Board)
 		openSpacesWeight := math.Pow(ratioSigmoid(float64(openSpaces)/float64(openSpacesOnBoard)), 1.2)
 		possibleMoves[dir].weight *= openSpacesWeight
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "open spaces", "weight", possibleMoves[dir].Weight())
