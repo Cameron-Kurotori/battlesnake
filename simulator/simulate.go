@@ -213,5 +213,5 @@ func main() {
 		client: RecordStates(NewClient(host, port)),
 	}
 
-	simulator.Simulate(4, 11, 11, 200)
+	simulator.Simulate(4, 11, 11, 1000)
 }
