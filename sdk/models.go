@@ -132,7 +132,8 @@ func (snake Battlesnake) Next(dir Direction, board Board) Battlesnake {
 	nextBody := make([]Coord, 1)
 	nextBody[0] = Coord(dir).Add(snake.Body[0])
 	nextBody = append(nextBody, snake.Body...)
-	if CoordSliceContains(nextBody[0], board.Food) {
+	snake.Health--
+	if !CoordSliceContains(nextBody[0], board.Food) {
 		nextBody = nextBody[:len(nextBody)-1]
 		snake.Health++
 	}
