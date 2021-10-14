@@ -250,14 +250,10 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		foodDistRatio := foodAvailability(dir, state.You, state.Board)
 		foodExponent := 1.0
 		if state.You.Health < 60 || avgLenDiff > -1 {
-			if state.You.Health < 60 {
-				foodExponent = math.Max(1.0, -math.Log(float64(state.You.Health-5))+5)
-			} else {
-				foodExponent = 1.5*math.Log(avgLenDiff+3) + 1
-			}
+			foodExponent = 1 / float64(state.You.Health)
 			foodDistRatio = 1 - foodDistRatio
 		}
-		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent/32)
+		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "food", "weight", possibleMoves[dir].Weight())
 
 		// [0, 1]
