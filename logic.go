@@ -305,7 +305,7 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 			}
 		}
 
-		allCollisionWeight = math.Pow(allCollisionWeight, 1.0)
+		allCollisionWeight = math.Pow(allCollisionWeight, 3.0)
 		possibleMoves[dir].weight *= allCollisionWeight
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "all collisions", "weight", possibleMoves[dir].Weight())
 
