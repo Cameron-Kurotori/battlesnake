@@ -194,7 +194,7 @@ func calculateSnakeWeight(dir sdk.Direction, me sdk.Battlesnake, board sdk.Board
 	totalSnakeDistances := 0
 	directionalDistances := []int{}
 	for _, snake := range board.OtherSnakes(me.ID) {
-		if me.Length-snake.Length >= 1 {
+		if me.Length-snake.Length <= 1 {
 			snakeDist := snake.Head.Manhattan(me.Head)
 			totalSnakeDistances += snakeDist
 			if snake.Head.InDirectionOf(me.Head, dir) {
