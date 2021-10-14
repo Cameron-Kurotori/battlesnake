@@ -257,12 +257,12 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 			}
 			foodDistRatio = 1 - foodDistRatio
 		}
-		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent)
+		possibleMoves[dir].weight *= math.Pow(foodDistRatio, foodExponent/32)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "food", "weight", possibleMoves[dir].Weight())
 
 		// [0, 1]
 		snakeWeight := calculateSnakeWeight(dir, state.You, state.Board)
-		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.5)
+		possibleMoves[dir].weight *= math.Pow(snakeWeight, 1.0/2.0)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "snake weight", "weight", possibleMoves[dir].Weight())
 
 		allCollisionWeight := 1.0
@@ -281,17 +281,17 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 			}
 		}
 
-		possibleMoves[dir].weight *= math.Pow(allCollisionWeight, 2.0)
+		possibleMoves[dir].weight *= math.Pow(allCollisionWeight, 1.0)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "all collisions", "weight", possibleMoves[dir].Weight())
-		possibleMoves[dir].weight *= math.Pow(immediateCollisionWeight, 6.0)
+		possibleMoves[dir].weight *= math.Pow(immediateCollisionWeight, 4.0)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "immediate collisions", "weight", possibleMoves[dir].Weight())
 
 		immediateSpaceScore := immediateSpace(nextSnake.Head, state.Board)
-		possibleMoves[dir].weight *= math.Pow(immediateSpaceScore, 1.0)
+		possibleMoves[dir].weight *= math.Pow(immediateSpaceScore, 1.0/24)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "immediateSpaceScore", "weight", possibleMoves[dir].Weight())
 
 		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
-		possibleMoves[dir].weight *= math.Pow(ratioSigmoid(float64(openSpaces)/float64(openSpacesOnBoard)), 3.0)
+		possibleMoves[dir].weight *= math.Pow(ratioSigmoid(float64(openSpaces)/float64(openSpacesOnBoard)), 1.0)
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "open spaces", "weight", possibleMoves[dir].Weight())
 
 		_ = level.Info(dirLogger).Log(
