@@ -158,9 +158,11 @@ func foodAvailability(dir sdk.Direction, me sdk.Battlesnake, board sdk.Board) (v
 func immediateSpace(target sdk.Coord, board sdk.Board) float64 {
 	count := 0
 	for _, dir := range []sdk.Direction{
-		{-1, 1}, {0, 1}, {1, 1},
-		{-1, 0}, {1, 0},
-		{-1, -1}, {0, -1}, {1, -1},
+		{-1, 2}, {0, 2}, {1, 2},
+		{-2, 1}, {-1, 1}, {0, 1}, {1, 1}, {2, 1},
+		{-2, 0}, {-1, 0}, {1, 0}, {2, 0},
+		{-2, -1}, {-1, -1}, {0, -1}, {1, -1}, {2, -1},
+		{-1, -2}, {0, -2}, {1, -2},
 	} {
 		t := target.Add(sdk.Coord(dir))
 		if !(board.OutOfBounds(t) || board.Occupied(t)) {
