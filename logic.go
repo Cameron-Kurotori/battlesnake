@@ -256,9 +256,9 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		for _, snake := range otherSnakes {
 			collisionScore := snakeCollisionScore(logger, dir, state.You, snake, state.Board)
 			allCollisionWeight *= collisionScore
-			if snake.Head.Manhattan(nextSnake.Head) == 1 {
+			if snake.Head.Manhattan(nextSnake.Head) <= 2 {
 				immediateCollisionScore := collisionScore
-				if snake.Length < nextSnake.Length {
+				if snake.Length > nextSnake.Length {
 					immediateCollisionScore = 1 - immediateCollisionScore
 				} else {
 					immediateCollisionScore = math.Pow(immediateCollisionScore, 2.0)
