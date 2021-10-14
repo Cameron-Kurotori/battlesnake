@@ -215,6 +215,16 @@ func calculateSnakeWeight(dir sdk.Direction, me sdk.Battlesnake, board sdk.Board
 	return ratioSigmoid(math.Sqrt(sum))
 }
 
+// [0, 1]
+// 0 = on border
+// 1 = in center
+func edgeWeight(dir sdk.Direction, me sdk.Battlesnake, board sdk.Board) float64 {
+	nextHead := me.Next(dir, board).Head
+	closestX := math.Min(float64(nextHead.X), float64(board.Width-nextHead.X))
+	closestY := math.Min(float64(nextHead.Y), float64(board.Width-nextHead.Y))
+	return ratioSigmoid(closestX/math.Floor(float64(board.Width)/2.0)) * (closestY / math.Floor(float64(board.Height)/2.0))
+}
+
 type pMove struct {
 	dir    sdk.BattlesnakeMove
 	weight float64
@@ -317,6 +327,11 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		possibleMoves[dir].weight *= immediateSpaceScore
 		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "immediateSpaceScore", "weight", possibleMoves[dir].Weight())
 
+		edgeWeight := edgeWeight(dir, state.You, state.Board)
+		edgeWeight = math.Pow(edgeWeight, math.Sqrt(float64(state.Turn+1))/20.0)
+		possibleMoves[dir].weight *= edgeWeight
+		_ = level.Debug(dirLogger).Log("msg", "updated weight", "after", "edge weight", "weight", possibleMoves[dir].Weight())
+
 		openSpaces := numOpenSpaces(dirLogger, state.You.Next(dir, state.Board).Head, state.Board)
 		openSpacesWeight := math.Pow(ratioSigmoid(float64(openSpaces)/float64(openSpacesOnBoard)), 1.2)
 		possibleMoves[dir].weight *= openSpacesWeight
@@ -332,6 +347,7 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 			"can_kill_weight", avgGuaranteedReductionRatio,
 			"collision_weight_all", allCollisionWeight,
 			"collision_weight_immediate", immediateCollisionWeight,
+			"edge_weight", edgeWeight,
 			"final_weight", possibleMoves[dir].Weight(),
 			"food_distance_ratio", foodDistRatio,
 			"health", state.You.Health,
