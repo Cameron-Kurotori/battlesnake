@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}
+TableRenderer
+{% endblock %}
+
+{% block headscript %}{% endblock %}
+
+
+{% block tailscript %}
+<script>
+    clear_table()
+    create_table()
+</script>
+{% endblock %}
+
+
+
+{% block body %}
+<table id="game">
+{% for row in rows %}
+    <tr>
+    {% for cell in row %}
+        <td class="game_td {% if cell.snake %}snake {% if cell.dead %}dead{% endif %} {% if cell.head %}head{% endif %} snake{{ cell.index }}{% endif %}">{% if cell.food %}<span class="food"></span>{% endif %}</td>
+    {% endfor %}
+    </tr>
+{% endfor %}
+</table>
+{% if prev is not none %}<form action="/render/{{ prev }}"><button>Prev</button></form>{% endif %}
+{% if next is not none  %}<form action="/render/{{ next }}"><button>Next</button></form>{% endif %}
+{% if rawstate is not none  %}<pre><code>{{ rawstate }}</code></pre>{% endif %}
+
+{% endblock %}

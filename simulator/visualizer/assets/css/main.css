@@ -1,0 +1,54 @@
+.game_td {
+    border: 1px solid black;
+    width: 50px;
+    height: 50px;
+    overflow: hiden;
+}
+
+.game {
+    border: 1px solid black;
+    table-layout: fixed;
+}
+
+.snake_cell {
+    height: 100%;
+    width: 100%;
+}
+
+.snake0 {
+    background-color: purple;
+}
+
+.snake1 {
+    background-color: aqua;
+}
+.snake2 {
+    background-color: blue;
+}
+.snake3 {
+    background-color: green;
+}
+.snake4 {
+    background-color: yellow;
+}
+.snake5 {
+    background-color: black;
+}
+
+.dead {
+    opacity: 25%;
+}
+
+.head {
+    border: 2px solid black;
+}
+
+.food {
+    background-color: red;
+    height: 80%;
+    width: 80%;
+    text-align: center;
+    vertical-align: middle;
+    border-radius: 50%;
+    display: inline-block;
+}
