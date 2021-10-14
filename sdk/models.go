@@ -165,6 +165,10 @@ func (snake Battlesnake) Direction() Direction {
 	return Direction(head.Add(neck.Reverse()))
 }
 
+func (snake Battlesnake) Tail() Coord {
+	return snake.Body[len(snake.Body)-1]
+}
+
 type Direction Coord
 
 var (

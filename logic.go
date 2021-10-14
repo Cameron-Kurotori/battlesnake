@@ -273,7 +273,9 @@ func (m heuristicMover) Move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		if state.Board.OutOfBounds(nextSnake.Head) {
 			_ = level.Debug(dirLogger).Log("msg", "out of bounds")
 			continue
-		} else if state.Board.Occupied(nextSnake.Head) {
+		} else if state.Board.Occupied(nextSnake.Head) &&
+			(nextSnake.Head != nextSnake.Tail() || // since board uses old state, tail will move
+				nextSnake.Tail() == state.You.Tail()) { // unless i eat
 			_ = level.Debug(dirLogger).Log("msg", "occupied")
 			continue
 		}
