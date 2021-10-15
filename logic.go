@@ -50,7 +50,7 @@ func heuristic(pHeadon int) int {
 func snakeWillDie(snake sdk.Battlesnake, board sdk.Board) bool {
 	for _, dir := range board.Moves(snake) {
 		nextSnake := snake.Next(dir, board.Food, board.Hazards)
-		if !nextSnake.Dead {
+		if nextSnake.Dead {
 			return true
 		}
 	}
