@@ -43,12 +43,29 @@ func end(state sdk.GameState) {
 }
 
 // higher means more desirable
-func heuristic(state sdk.GameState, pHeadon, openSpaceCount int) float64 {
+func heuristic(state sdk.GameState, pHeadon, openSpaceCount, distanceToClosestFood int) float64 {
+
+	headOnFinal := -float64(5 * pHeadon)
+
 	totalOpenSpace := 0
 	for _, snake := range state.Board.Snakes {
 		totalOpenSpace += int(snake.Length)
 	}
-	return -float64(5*pHeadon) + (3 * float64(openSpaceCount) / float64(totalOpenSpace))
+
+	openSpaceFinal := (3 * float64(openSpaceCount) / float64(totalOpenSpace))
+
+	totalSnakeLengthDiff := 0
+	for _, snake := range state.Board.OtherSnakes(state.You.ID) {
+		totalSnakeLengthDiff += int(state.You.Length) - int(snake.Length)
+	}
+	foodDistanceFinal := float64(distanceToClosestFood)
+	if state.You.Health > 50 && float64(totalSnakeLengthDiff)/float64(len(state.Board.Snakes)-1) >= 2 {
+		foodDistanceFinal = -foodDistanceFinal
+	}
+	foodDistanceFinal = (1.0 + (1.0 / (1.0 + math.Pow(math.E, float64(state.You.Health-50)/4.0)))) * foodDistanceFinal
+
+	return headOnFinal + openSpaceFinal + foodDistanceFinal
+
 }
 
 func snakeWillDie(snake sdk.Battlesnake, board sdk.Board) bool {
@@ -113,6 +130,17 @@ func openSpaceCount(dir sdk.Direction, state sdk.GameState) int {
 	return len(open) - 1
 }
 
+func distanceToClosestFood(dir sdk.Direction, state sdk.GameState) int {
+	nextSnake := state.You.Next(dir, state.Board.Food, state.Board.Hazards)
+	closest := state.Board.Width + state.Board.Height + 1
+	for _, food := range state.Board.Food {
+		if d := food.Manhattan(nextSnake.Head); d < closest {
+			closest = d
+		}
+	}
+	return closest
+}
+
 // This function is called on every turn of a game. Use the provided GameState to decide
 // where to move -- valid moves are "up", "down", "left", or "right".
 // We've provided some code and comments to get you started.
@@ -125,7 +153,8 @@ func move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 		}
 		potentialHeadOn := potentialHeadonLosses(dir, state)
 		openSpaceCount := openSpaceCount(dir, state)
-		score := heuristic(state, potentialHeadOn, openSpaceCount)
+		closestFood := distanceToClosestFood(dir, state)
+		score := heuristic(state, potentialHeadOn, openSpaceCount, closestFood)
 		if score > maxHeuristic {
 			maxHeuristic = score
 			bestDir = dir
