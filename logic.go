@@ -58,14 +58,13 @@ func heuristic(state sdk.GameState, pHeadon, openSpaceCount, distanceToClosestFo
 	for _, snake := range state.Board.OtherSnakes(state.You.ID) {
 		totalSnakeLengthDiff += int(state.You.Length) - int(snake.Length)
 	}
-	foodDistanceFinal := float64(distanceToClosestFood)
+	foodDistanceFinal := float64(distanceToClosestFood) / float64(state.Board.Width+state.Board.Height)
 	if state.You.Health > 50 && float64(totalSnakeLengthDiff)/float64(len(state.Board.Snakes)-1) >= 2 {
 		foodDistanceFinal = -foodDistanceFinal
 	}
-	foodDistanceFinal = (1.0 + (1.0 / (1.0 + math.Pow(math.E, float64(state.You.Health-50)/4.0)))) * foodDistanceFinal
+	foodDistanceFinal = (1.0 + (2.0 / (1.0 + math.Pow(math.E, float64(state.You.Health-60)/10.0)))) * foodDistanceFinal
 
 	return headOnFinal + openSpaceFinal + foodDistanceFinal
-
 }
 
 func snakeWillDie(snake sdk.Battlesnake, board sdk.Board) bool {
