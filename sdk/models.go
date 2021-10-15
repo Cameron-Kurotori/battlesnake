@@ -133,7 +133,9 @@ func (b Board) OtherSnakes(myID string) []Battlesnake {
 func (b Board) Moves(snake Battlesnake) []Direction {
 	moves := []Direction{}
 	for _, move := range snake.Moves() {
-		if !b.OutOfBounds(snake.Next(move, b.Food, b.Hazards).Head) {
+		nextSnake := snake.Next(move, b.Food, b.Hazards)
+		if !b.OutOfBounds(nextSnake.Head) &&
+			nextSnake.Head != nextSnake.Tail() {
 			moves = append(moves, move)
 		}
 	}
@@ -207,7 +209,7 @@ func (snake Battlesnake) Moves() []Direction {
 	snakeDirection := snake.Direction()
 	for _, dir := range MoveToDirection {
 		if Coord(dir) != Coord(snakeDirection).Reverse() &&
-			snake.Head.Add(Coord(dir)) != snake.Tail() {
+			!CoordSliceContains(snake.Head.Add(Coord(dir)), snake.Body[:snake.Length-1]) {
 			moves = append(moves, dir)
 		}
 	}
