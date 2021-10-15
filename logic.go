@@ -64,7 +64,10 @@ func heuristic(state sdk.GameState, pHeadon, openSpaceCount, distanceToClosestFo
 	}
 	foodDistanceFinal = (1.0 + (2.0 / (1.0 + math.Pow(math.E, float64(state.You.Health-60)/10.0)))) * foodDistanceFinal
 
-	return headOnFinal + openSpaceFinal + foodDistanceFinal
+	final := headOnFinal + openSpaceFinal + foodDistanceFinal
+	_ = level.Info(state.Logger(logging.GlobalLogger())).Log("msg", "heuristic calculated", "final", final, "head_on", headOnFinal, "open_space", openSpaceFinal, "food_distance", foodDistanceFinal)
+
+	return final
 }
 
 func snakeWillDie(snake sdk.Battlesnake, board sdk.Board) bool {
