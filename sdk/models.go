@@ -15,7 +15,7 @@ type GameState struct {
 }
 
 // Next gives you the next game state (minus new hazards and new food)
-func (state GameState) Next(dirs map[string]Direction) GameState {
+func (state GameState) Next(dirs map[string]Direction) (nextState GameState, dead bool) {
 	var you Battlesnake
 	nextSnakes := make([]Battlesnake, len(state.Board.Snakes))
 	snakeCoords := map[Coord]bool{}
@@ -41,12 +41,49 @@ func (state GameState) Next(dirs map[string]Direction) GameState {
 		}
 	}
 
+	isDead := func(snake Battlesnake) bool {
+		if snake.Health <= 0 {
+			return true
+		}
+		if state.Board.OutOfBounds(snake.Head) {
+			return true
+		}
+		for _, oSnake := range nextSnakes {
+			if oSnake.Health > 0 {
+				// dead snakes can't kill
+				if oSnake.ID != snake.ID {
+					if oSnake.Head == snake.Head {
+						// head on collision
+						if oSnake.Length >= snake.Length {
+							return true
+						}
+					}
+				}
+				if CoordSliceContains(snake.Head, oSnake.Body[1:]) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	youDied := false
+	aliveSnakes := []Battlesnake{}
+	// check death states
+	for _, snake := range nextSnakes {
+		if !isDead(snake) {
+			aliveSnakes = append(aliveSnakes, snake)
+		} else if snake.ID == you.ID {
+			youDied = true
+		}
+	}
+
 	state.You = you
-	state.Board.Snakes = nextSnakes
+	state.Board.Snakes = aliveSnakes
 	state.Board.otherSnakes = nil
 	state.Board.Food = newFood
 	state.Turn++
-	return state
+	return state, youDied
 }
 
 func (state GameState) Logger(logger log.Logger) log.Logger {
