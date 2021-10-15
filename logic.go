@@ -6,9 +6,9 @@ package main
 // from the list of possible moves!
 
 import (
-	"log"
-
+	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/Cameron-Kurotori/battlesnake/sdk"
+	"github.com/go-kit/log/level"
 )
 
 // This function is called when you register your Battlesnake on play.battlesnake.com
@@ -17,7 +17,7 @@ import (
 // For customization options, see https://docs.battlesnake.com/references/personalization
 // TIP: If you open your Battlesnake URL in browser you should see this data.
 func info() sdk.BattlesnakeInfoResponse {
-	log.Println("INFO")
+	_ = level.Info(logging.GlobalLogger()).Log("msg", "info'")
 	return sdk.BattlesnakeInfoResponse{
 		APIVersion: "1",
 		Author:     "cameron-kurotori", // TODO: Your Battlesnake username
@@ -31,13 +31,13 @@ func info() sdk.BattlesnakeInfoResponse {
 // The provided GameState contains information about the game that's about to be played.
 // It's purely for informational purposes, you don't have to make any decisions here.
 func start(state sdk.GameState) {
-	log.Printf("%s START\n", state.Game.ID)
+	_ = level.Info(state.Logger(logging.GlobalLogger())).Log("msg", "start'")
 }
 
 // This function is called when a game your Battlesnake was in has ended.
 // It's purely for informational purposes, you don't have to make any decisions here.
 func end(state sdk.GameState) {
-	log.Printf("%s END\n\n", state.Game.ID)
+	_ = level.Info(state.Logger(logging.GlobalLogger())).Log("msg", "end'")
 }
 
 // This function is called on every turn of a game. Use the provided GameState to decide
