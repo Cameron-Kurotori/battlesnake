@@ -6,6 +6,8 @@ package main
 // from the list of possible moves!
 
 import (
+	"math"
+
 	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/Cameron-Kurotori/battlesnake/sdk"
 	"github.com/go-kit/log/level"
@@ -50,7 +52,7 @@ func heuristic(foodScore int, snakeScore int) int {
 // We've provided some code and comments to get you started.
 func move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 	bestDir := state.You.Direction()
-	maxHeuristic := 0
+	maxHeuristic := math.MinInt64
 	for _, dir := range state.Board.Moves(state.You) {
 		foodScore := 0
 		snakeScore := 0
