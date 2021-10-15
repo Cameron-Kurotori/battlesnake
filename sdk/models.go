@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 type GameState struct {
@@ -153,25 +152,6 @@ func (b Board) Occupied(c Coord) bool {
 	return false
 }
 
-// func (b Board) PossiblyOccupied(logger log.Logger, c Coord) bool {
-// 	if CoordSliceContains(c, b.Hazards) {
-// 		return true
-// 	}
-// 	for _, snake := range b.Snakes {
-// 		// if there's a possibility of snake growing, assume it grows
-// 		bodyLen := snake.Length
-// 		for _, move := range snake.Moves(logger) {
-// 			if CoordSliceContains(snake.Next(move, b)[0], b.Food) {
-// 				bodyLen = snake.Length + 1
-// 			}
-// 		}
-// 		if CoordSliceContains(c, snake.Body[:bodyLen-1]) {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
 type Battlesnake struct {
 	ID      string  `json:"id"`
 	Name    string  `json:"name"`
@@ -212,7 +192,7 @@ func (snake Battlesnake) Next(dir Direction, food []Coord, hazards []Coord) Batt
 	return snake
 }
 
-func (snake Battlesnake) Moves(logger log.Logger) []Direction {
+func (snake Battlesnake) Moves() []Direction {
 	moves := []Direction{}
 	snakeDirection := snake.Direction()
 	for _, dir := range MoveToDirection {
@@ -220,7 +200,6 @@ func (snake Battlesnake) Moves(logger log.Logger) []Direction {
 			moves = append(moves, dir)
 		}
 	}
-	_ = level.Debug(logger).Log("msg", "calculating possible moves", "moves", moves, "snake_direction", snakeDirection)
 	return moves
 }
 
