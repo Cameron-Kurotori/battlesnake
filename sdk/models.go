@@ -14,7 +14,7 @@ type GameState struct {
 }
 
 // Next gives you the next game state (minus new hazards and new food)
-func (state GameState) Next(dirs map[string]Direction) (nextState GameState, dead bool) {
+func (state GameState) Next(dirs map[string]Direction) (nextState GameState) {
 	var you Battlesnake
 	nextSnakes := make([]Battlesnake, len(state.Board.Snakes))
 	snakeCoords := map[Coord]bool{}
@@ -66,14 +66,13 @@ func (state GameState) Next(dirs map[string]Direction) (nextState GameState, dea
 		return false
 	}
 
-	youDied := false
 	aliveSnakes := []Battlesnake{}
 	// check death states
 	for _, snake := range nextSnakes {
 		if !isDead(snake) {
 			aliveSnakes = append(aliveSnakes, snake)
 		} else if snake.ID == you.ID {
-			youDied = true
+			you.Dead = true
 		}
 	}
 
@@ -82,7 +81,7 @@ func (state GameState) Next(dirs map[string]Direction) (nextState GameState, dea
 	state.Board.otherSnakes = nil
 	state.Board.Food = newFood
 	state.Turn++
-	return state, youDied
+	return state
 }
 
 func (state GameState) Logger(logger log.Logger) log.Logger {
@@ -131,6 +130,16 @@ func (b Board) OtherSnakes(myID string) []Battlesnake {
 	return others
 }
 
+func (b Board) Moves(snake Battlesnake) []Direction {
+	moves := []Direction{}
+	for _, move := range snake.Moves() {
+		if !b.OutOfBounds(snake.Next(move, b.Food, b.Hazards).Head) {
+			moves = append(moves, move)
+		}
+	}
+	return moves
+}
+
 func (b Board) OutOfBounds(c Coord) bool {
 	return c.X >= b.Width ||
 		c.X < 0 ||
@@ -160,6 +169,7 @@ type Battlesnake struct {
 	Head    Coord   `json:"head"`
 	Length  int32   `json:"length"`
 	Latency string  `json:"latency"`
+	Dead    bool    `json:"-"`
 
 	// Used in non-standard game modes
 	Shout string `json:"shout"`
@@ -196,7 +206,8 @@ func (snake Battlesnake) Moves() []Direction {
 	moves := []Direction{}
 	snakeDirection := snake.Direction()
 	for _, dir := range MoveToDirection {
-		if Coord(dir) != Coord(snakeDirection).Reverse() {
+		if Coord(dir) != Coord(snakeDirection).Reverse() &&
+			snake.Head.Add(Coord(dir)) != snake.Tail() {
 			moves = append(moves, dir)
 		}
 	}
