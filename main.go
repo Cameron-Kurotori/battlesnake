@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Cameron-Kurotori/battlesnake/logging"
 	"github.com/Cameron-Kurotori/battlesnake/sdk"
@@ -39,13 +40,16 @@ func HandleStart(w http.ResponseWriter, r *http.Request) {
 
 func HandleMove(w http.ResponseWriter, r *http.Request) {
 	state := sdk.GameState{}
+
 	err := json.NewDecoder(r.Body).Decode(&state)
 	if err != nil {
 		_ = level.Error(logging.GlobalLogger()).Log("msg", "failed to decode move json", "err", err)
 		return
 	}
 
+	start := time.Now()
 	response := move(state)
+	_ = level.Info(state.Logger(logging.GlobalLogger())).Log("msg", "making move", "move", response.Move, "took_ms", time.Since(start).Milliseconds())
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
