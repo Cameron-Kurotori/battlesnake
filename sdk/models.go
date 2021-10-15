@@ -14,14 +14,38 @@ type GameState struct {
 	You   Battlesnake `json:"you"`
 }
 
-func (state GameState) Next(dir Direction) GameState {
-	state.You = state.You.Next(dir, state.Board)
-	for i, food := range state.Board.Food {
-		if food == state.You.Head {
-			state.Board.Food = append(state.Board.Food[:i], state.Board.Food[i+1:]...)
-			break
+// Next gives you the next game state (minus new hazards and new food)
+func (state GameState) Next(dirs map[string]Direction) GameState {
+	var you Battlesnake
+	nextSnakes := make([]Battlesnake, len(state.Board.Snakes))
+	snakeCoords := map[Coord]bool{}
+	for i, snake := range state.Board.Snakes {
+		dir, ok := dirs[snake.ID]
+		if !ok {
+			dir = snake.Direction()
+		}
+		nextSnake := snake.Next(dir, state.Board.Food, state.Board.Hazards)
+		if snake.ID == state.You.ID {
+			you = nextSnake
+		}
+		nextSnakes[i] = nextSnake
+		for _, piece := range nextSnake.Body {
+			snakeCoords[piece] = true
 		}
 	}
+
+	newFood := []Coord{}
+	for _, food := range state.Board.Food {
+		if _, ok := snakeCoords[food]; !ok {
+			newFood = append(newFood, food)
+		}
+	}
+
+	state.You = you
+	state.Board.Snakes = nextSnakes
+	state.Board.otherSnakes = nil
+	state.Board.Food = newFood
+	state.Turn++
 	return state
 }
 
@@ -126,20 +150,27 @@ type Battlesnake struct {
 }
 
 // Next returns back a new slice of coordinates the represents the new snake body
-// If addOne is `true` then the body has an additional segment
-func (snake Battlesnake) Next(dir Direction, board Board) Battlesnake {
-	nextBody := make([]Coord, 1)
-	nextBody[0] = Coord(dir).Add(snake.Body[0])
-	nextBody = append(nextBody, snake.Body...)
-	snake.Health--
-	if !CoordSliceContains(nextBody[0], board.Food) {
-		nextBody = nextBody[:len(nextBody)-1]
+func (snake Battlesnake) Next(dir Direction, food []Coord, hazards []Coord) Battlesnake {
+	tail := snake.Tail()
+	nextBody := append([]Coord{snake.Head.Add(Coord(dir))}, snake.Body[:len(snake.Body)-1]...)
+	health := snake.Health
+
+	if CoordSliceContains(nextBody[0], food) {
+		nextBody = append(nextBody, tail)
+		health = 100
 	} else {
-		snake.Health = 100
+		if CoordSliceContains(nextBody[0], hazards) {
+			health -= 15
+		} else {
+			health--
+		}
 	}
+
+	// no calculations should be done once we start changing struct
 	snake.Body = nextBody
 	snake.Head = nextBody[0]
 	snake.Length = int32(len(nextBody))
+	snake.Health = health
 
 	return snake
 }
@@ -157,7 +188,7 @@ func (snake Battlesnake) Moves(logger log.Logger) []Direction {
 }
 
 func (snake Battlesnake) Direction() Direction {
-	if snake.Length < 2 {
+	if snake.Length < 2 || snake.Body[0] == snake.Body[1] {
 		return Direction_Right
 	}
 	head, neck := snake.Head, snake.Body[1]
