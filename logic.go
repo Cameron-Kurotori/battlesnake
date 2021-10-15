@@ -40,11 +40,27 @@ func end(state sdk.GameState) {
 	_ = level.Info(state.Logger(logging.GlobalLogger())).Log("msg", "end'")
 }
 
+// higher means more desirable
+func heuristic(foodScore int, snakeScore int) int {
+	return foodScore + snakeScore
+}
+
 // This function is called on every turn of a game. Use the provided GameState to decide
 // where to move -- valid moves are "up", "down", "left", or "right".
 // We've provided some code and comments to get you started.
 func move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
+	bestDir := state.You.Direction()
+	maxHeuristic := 0
+	for _, dir := range state.Board.Moves(state.You) {
+		foodScore := 0
+		snakeScore := 0
+		score := heuristic(foodScore, snakeScore)
+		if score > maxHeuristic {
+			maxHeuristic = score
+			bestDir = dir
+		}
+	}
 	return sdk.BattlesnakeMoveResponse{
-		Move: sdk.BattlesnakeMove_Right,
+		Move: sdk.DirectionToMove[bestDir],
 	}
 }
