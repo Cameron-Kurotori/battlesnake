@@ -43,8 +43,12 @@ func end(state sdk.GameState) {
 }
 
 // higher means more desirable
-func heuristic(pHeadon int) int {
-	return -pHeadon
+func heuristic(state sdk.GameState, pHeadon, openSpaceCount int) float64 {
+	totalOpenSpace := 0
+	for _, snake := range state.Board.Snakes {
+		totalOpenSpace += int(snake.Length)
+	}
+	return -float64(5*pHeadon) + (3 * float64(openSpaceCount) / float64(totalOpenSpace))
 }
 
 func snakeWillDie(snake sdk.Battlesnake, board sdk.Board) bool {
@@ -86,18 +90,42 @@ func potentialHeadonLosses(dir sdk.Direction, state sdk.GameState) int {
 	return count
 }
 
+func openSpaceCount(dir sdk.Direction, state sdk.GameState) int {
+	nextState := state.Next(map[string]sdk.Direction{state.You.ID: dir})
+
+	open := map[sdk.Coord]bool{}
+	var recurse func(target sdk.Coord)
+	recurse = func(target sdk.Coord) {
+		if _, ok := open[target]; ok {
+			return
+		}
+		if target != nextState.You.Head {
+			if nextState.Board.OutOfBounds(target) || nextState.Board.Occupied(target) {
+				return
+			}
+		}
+		open[target] = true
+		for dir := range sdk.DirectionToMove {
+			recurse(target.Add(sdk.Coord(dir)))
+		}
+	}
+	recurse(nextState.You.Head)
+	return len(open) - 1
+}
+
 // This function is called on every turn of a game. Use the provided GameState to decide
 // where to move -- valid moves are "up", "down", "left", or "right".
 // We've provided some code and comments to get you started.
 func move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 	bestDir := state.You.Direction()
-	maxHeuristic := math.MinInt64
+	maxHeuristic := float64(math.MinInt64)
 	for _, dir := range state.Board.Moves(state.You) {
 		if !safeSpaceRegardlessOfMovement(dir, state) {
 			continue
 		}
 		potentialHeadOn := potentialHeadonLosses(dir, state)
-		score := heuristic(potentialHeadOn)
+		openSpaceCount := openSpaceCount(dir, state)
+		score := heuristic(state, potentialHeadOn, openSpaceCount)
 		if score > maxHeuristic {
 			maxHeuristic = score
 			bestDir = dir
