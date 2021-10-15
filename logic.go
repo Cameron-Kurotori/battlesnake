@@ -7,6 +7,7 @@ package main
 
 import (
 	"log"
+	"sort"
 
 	"github.com/Cameron-Kurotori/battlesnake/sdk"
 )
@@ -44,6 +45,24 @@ func end(state sdk.GameState) {
 // where to move -- valid moves are "up", "down", "left", or "right".
 // We've provided some code and comments to get you started.
 func move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
+	deathRatios := map[sdk.Direction]float64{}
+	dirs := []sdk.Direction{}
+	for _, dir := range state.Board.Moves(state.You) {
+		death, total := DeathDepth(dir, state, 4)
+		deathRatios[dir] = float64(death) / float64(total)
+		dirs = append(dirs, dir)
+	}
+	if len(dirs) > 0 {
+		sort.Slice(dirs, func(i, j int) bool {
+			di, dj := dirs[i], dirs[j]
+			return deathRatios[di] < deathRatios[dj]
+		})
+
+		return sdk.BattlesnakeMoveResponse{
+			Move: sdk.DirectionToMove[dirs[0]],
+		}
+
+	}
 	return sdk.BattlesnakeMoveResponse{
 		Move: sdk.BattlesnakeMove_Right,
 	}
