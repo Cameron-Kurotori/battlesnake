@@ -47,6 +47,29 @@ func heuristic(foodScore int, snakeScore int) int {
 	return foodScore + snakeScore
 }
 
+func snakeWillDie(snake sdk.Battlesnake, board sdk.Board) bool {
+	for _, dir := range board.Moves(snake) {
+		nextSnake := snake.Next(dir, board.Food, board.Hazards)
+		if !nextSnake.Dead {
+			return true
+		}
+	}
+	return false
+}
+
+func safeSpaceRegardlessOfMovement(dir sdk.Direction, state sdk.GameState) bool {
+	meNext := state.You.Next(dir, state.Board.Food, state.Board.Hazards)
+	for _, snake := range state.Board.Snakes {
+		if snake.ID == state.You.ID {
+			continue
+		}
+		if !snakeWillDie(snake, state.Board) && sdk.CoordSliceContains(meNext.Head, snake.Body[:snake.Length-1]) {
+			return false
+		}
+	}
+	return true
+}
+
 // This function is called on every turn of a game. Use the provided GameState to decide
 // where to move -- valid moves are "up", "down", "left", or "right".
 // We've provided some code and comments to get you started.
@@ -54,6 +77,9 @@ func move(state sdk.GameState) sdk.BattlesnakeMoveResponse {
 	bestDir := state.You.Direction()
 	maxHeuristic := math.MinInt64
 	for _, dir := range state.Board.Moves(state.You) {
+		if !safeSpaceRegardlessOfMovement(dir, state) {
+			continue
+		}
 		foodScore := 0
 		snakeScore := 0
 		score := heuristic(foodScore, snakeScore)
