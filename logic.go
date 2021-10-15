@@ -47,9 +47,9 @@ func heuristic(state sdk.GameState, pHeadon, openSpaceCount, distanceToClosestFo
 
 	headOnFinal := -float64(5 * pHeadon)
 
-	totalOpenSpace := 0
+	totalOpenSpace := state.Board.Height * state.Board.Width
 	for _, snake := range state.Board.Snakes {
-		totalOpenSpace += int(snake.Length)
+		totalOpenSpace -= int(snake.Length)
 	}
 
 	openSpaceFinal := (3 * float64(openSpaceCount) / float64(totalOpenSpace))
