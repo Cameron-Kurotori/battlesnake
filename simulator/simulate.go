@@ -134,6 +134,9 @@ func (s simulator) Simulate(count, width, height, maxTurns int) {
 				log.Printf("snake %s is out of bounds\n", s.Name)
 				return true
 			}
+			if sdk.CoordSliceContains(s.Head, s.Body[1:]) {
+				return true
+			}
 			for _, other := range nextSnakes {
 				if other.ID == s.ID {
 					continue
